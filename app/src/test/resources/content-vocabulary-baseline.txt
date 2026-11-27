@@ -8,10 +8,4 @@
 # The gate fails on any violation missing here and on any stale entry:
 # the baseline only shrinks, never grows.
 # F6 done 27/11/2026: UI Coach voice labels (32 lines removed).
-app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available aligned] | Riegel | A faixa também considera a checagem de Riegel. | F7
-app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available aligned] | pace | O pace do plano usa a previsão, não a meta. | F7
-app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available ambitious] | Riegel | A faixa também considera a checagem de Riegel. | F7
-app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available ambitious] | pace | O pace do plano usa a previsão, não a meta. | F7
-app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt [available conservative] | pace | O pace do plano usa a previsão, não a meta. | F7
-app/src/main/kotlin/com/meucoach/app/ui/review/WeeklyReviewFormat.kt [qualityLine downgraded] | qualidade | Qualidade: 2 planejadas, 1 mantida, 1 rebaixada (check-in de hoje aus … | F7
-app/src/main/kotlin/com/meucoach/app/ui/review/WeeklyReviewFormat.kt [qualityLine kept] | qualidade | Qualidade: 1 planejada, 1 mantida | F7
+# F7 done 27/11/2026: remaining screens (7 lines removed).

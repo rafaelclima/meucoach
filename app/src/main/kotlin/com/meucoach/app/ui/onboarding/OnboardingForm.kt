@@ -196,7 +196,7 @@ object OnboardingValidator {
         form.availabilityMinutes.forEach { (_, minutes) ->
             val value = minutes.toIntOrNull()
             if (value == null || value !in 1..MAX_MINUTES_PER_DAY) {
-                errors[OnboardingField.AVAILABILITY] = "Minutos por dia entre 1 e 1.440."
+                errors[OnboardingField.AVAILABILITY] = "Minutos por dia entre 1 e 1.440 (24 h)."
             }
         }
         return OnboardingValidation(errors)

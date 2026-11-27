@@ -367,7 +367,7 @@ private fun RaceEventFormDialog(
                     tagPrefix = "race-time",
                 )
                 Text(
-                    text = "A meta é só sua. O app não transforma isso em pace, faixa ou previsão.",
+                    text = "A meta é só sua. O app não transforma isso em ritmo, faixa ou previsão.",
                     style = McTextStyles.caption,
                     color = colors.textTertiary,
                 )
@@ -393,7 +393,7 @@ private fun RaceEventFormDialog(
                     val time = targetParts.totalSeconds(targetUnit)
                     if (!targetParts.isBlank && (time == null || time <= 0)) {
                         error = if (targetUnit == TargetTimeUnit.HOURS) {
-                            "Use horas, minutos (0–59) e segundos (0–59), ou deixe vazio."
+                            "Use horas, minutos e segundos (0 a 59), ou deixe vazio."
                         } else {
                             "Use minutos e segundos (0–59), ou deixe vazio."
                         }

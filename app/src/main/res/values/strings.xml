@@ -31,7 +31,7 @@
     <string name="tutorial_scene_2_body">Sono, carga e check-in mudam a recomendação. Sem dados suficientes, eu fico conservador — não invento.</string>
     <string name="tutorial_scene_2_cta">Entendi</string>
     <string name="tutorial_scene_2_step_1_title">Você corre</string>
-    <string name="tutorial_scene_2_step_1_body">Importa FIT, TCX ou GPX</string>
+    <string name="tutorial_scene_2_step_1_body">Você importa FIT, TCX ou GPX</string>
     <string name="tutorial_scene_2_step_2_title">Eu leio esforço e descanso</string>
     <string name="tutorial_scene_2_step_2_body">Carga, sono e check-in</string>
     <string name="tutorial_scene_2_step_3_title">Você recebe o próximo treino</string>
@@ -58,7 +58,7 @@
     <string name="tutorial_scene_3_import_done_body">Sua primeira corrida já está no app.</string>
     <string name="tutorial_scene_3_health_title">Conectar Health Connect</string>
     <string name="tutorial_scene_3_health_meta">2 min</string>
-    <string name="tutorial_scene_3_health_body">Sono, FC de repouso, HRV e SpO₂</string>
+    <string name="tutorial_scene_3_health_body">Sono, FC de repouso, variabilidade cardíaca (HRV) e oxigenação (SpO₂)</string>
     <string name="tutorial_scene_3_health_done_meta">Conectado</string>
     <string name="tutorial_scene_3_health_done_body">Seus dados de recuperação já entram na prontidão.</string>
 

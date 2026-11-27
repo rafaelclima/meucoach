@@ -770,9 +770,9 @@ private fun NextWorkoutCard(
                     modifier = Modifier.weight(1f),
                 )
                 WorkoutMetric(
-                    label = "ZONA",
+                    label = "INTENSIDADE",
                     value = workout.zone.substringBefore(" ·"),
-                    unit = "esforço",
+                    unit = "Fácil",
                     modifier = Modifier.weight(1f),
                 )
             } else {
@@ -900,8 +900,8 @@ private fun todayDoneNote(session: com.meucoach.core.domain.prescription.Planned
             "Você já concluiu este treino com uma sessão guiada registrada."
 
         com.meucoach.core.model.CompletionEvidence.MANUAL ->
-            "Você já concluiu este treino sem vincular uma corrida. Conta adesão, mas não entra " +
-                "em volume, carga ou zonas."
+            "Você já concluiu este treino sem vincular uma corrida. Conta adesão; " +
+                "sem volume, carga ou zonas."
 
         com.meucoach.core.model.CompletionEvidence.LEGACY_UNVERIFIED, null ->
             "Você já concluiu este treino, mas a evidência não foi verificada."
@@ -1012,7 +1012,7 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                     // never a "carga subiu rápido" verdict.
                     if (state.acwrReliable) {
                         McPill(
-                            text = "Aumento ${formatTwoDecimals(acwr)}× vs. 4 sem",
+                            text = "Aumento ${formatTwoDecimals(acwr)}× · últimos 7 d vs. 4 semanas",
                             containerColor = acwrColor(acwr).copy(alpha = 0.10f),
                             contentColor = acwrColor(acwr),
                         )
@@ -1034,21 +1034,21 @@ private fun WeeklyLoadCard(state: TodayUiState, onTrendsClick: () -> Unit) {
                 McStat(
                     label = "Base",
                     value = state.ctl?.toString() ?: NO_VALUE,
-                    hint = "média/dia · 42d",
+                    hint = "média/dia · 42 dias",
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 McStat(
                     label = "Fadiga",
                     value = state.atl?.toString() ?: NO_VALUE,
-                    hint = "média/dia · 7d",
+                    hint = "média/dia · 7 dias",
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 )
                 McStat(
                     label = "Balanço",
                     value = state.tsb?.toString() ?: NO_VALUE,
-                    hint = "base − fadiga",
+                    hint = "recuperação (base − fadiga)",
                     modifier = Modifier.weight(1f),
                     valueColor = colors.warning,
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1133,9 +1133,9 @@ private fun CheckInCard(done: Boolean, onCheckInClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = if (done) {
-                        "Sono, dor e energia registrados."
+                        "Sono, fadiga, dor e estresse registrados."
                     } else {
-                        "15 s para calibrar sono, dor e energia."
+                        "15 s para calibrar sono, fadiga, dor e estresse."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textSecondary,
@@ -1542,8 +1542,7 @@ private fun PlanWeekCard(
         if (manualToday) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "“Feito · sem registro” significa que o treino foi marcado como feito sem " +
-                    "vincular uma corrida. Ele conta adesão, mas não entra em volume, carga ou zonas.",
+                text = "“Feito · sem registro”: conta adesão, mas não entra em volume, carga ou zonas.",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
                 modifier = Modifier.testTag("plan-manual-note"),

@@ -202,47 +202,47 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `LevelGraduationViewModel.kt:260` | `"CTL estável ou crescente nas últimas 4 semanas"` | `"Carga das últimas 4 semanas estável ou subindo"` | pendente |
-| [C] | `LevelGraduationViewModel.kt:266` | `"Monotonia abaixo de 2,0 nas últimas 4 semanas"` | `"Variedade acima de 2,0 nas últimas 4 semanas"` | pendente |
-| [C] | `LevelGraduationViewModel.kt:256` | `"Prontidão atual fora do vermelho"` | `"Prontidão atual não está baixa"` | pendente |
-| [C] | `RacePredictionBlock.kt:117` | `"O pace do plano usa a previsão, não a meta."` | `"O ritmo do plano usa a previsão, não a meta."` | pendente |
-| [C] | `RacePredictionBlock.kt:136` | `"A faixa também considera a checagem de Riegel."` | `"A faixa também considera a sua forma recente, não só a meta."` | pendente |
-| [C] | `RaceEventCard.kt:370` | `"...não transforma isso em pace, faixa ou previsão."` | `"...em ritmo, faixa ou previsão."` | pendente |
-| [C] | `RaceEventCard.kt:396` | `"Use horas, minutos (0–59) e segundos (0–59), ou deixe vazio."` | `"Use horas, minutos e segundos (0 a 59), ou deixe vazio."` | pendente |
-| [C] | `LevelGraduationCard.kt:205`, `:214` | `"${rule.id} · ${rule.title}"`, `"${evidence.id} · $label"` | título legível + “Ver fontes e detalhes técnicos” colapsado | pendente |
-| [M] | `LevelGraduationViewModel.kt:248`, `:264` | `"...com evidência"`, `"Prova recente com evidência"` | `"...confirmados por uma corrida"`, `"Prova recente confirmada por uma corrida"` | pendente |
-| [M] | `LevelGraduationViewModel.kt:252` | `"Calibração de limiar válida"` | `"Calibração recente válida"` | pendente |
+| [C] | `LevelGraduationViewModel.kt:260` | `"CTL estável ou crescente nas últimas 4 semanas"` | `"Carga das últimas 4 semanas estável ou subindo"` | corrigido |
+| [C] | `LevelGraduationViewModel.kt:266` | `"Monotonia abaixo de 2,0 nas últimas 4 semanas"` | `"Variedade acima de 2,0 nas últimas 4 semanas"` | corrigido |
+| [C] | `LevelGraduationViewModel.kt:256` | `"Prontidão atual fora do vermelho"` | `"Prontidão atual não está baixa"` | corrigido |
+| [C] | `RacePredictionBlock.kt:117` | `"O pace do plano usa a previsão, não a meta."` | `"O ritmo do plano usa a previsão, não a meta."` | corrigido |
+| [C] | `RacePredictionBlock.kt:136` | `"A faixa também considera a checagem de Riegel."` | `"A faixa também considera a sua forma recente, não só a meta."` | corrigido |
+| [C] | `RaceEventCard.kt:370` | `"...não transforma isso em pace, faixa ou previsão."` | `"...em ritmo, faixa ou previsão."` | corrigido |
+| [C] | `RaceEventCard.kt:396` | `"Use horas, minutos (0–59) e segundos (0–59), ou deixe vazio."` | `"Use horas, minutos e segundos (0 a 59), ou deixe vazio."` | corrigido |
+| [C] | `LevelGraduationCard.kt:205`, `:214` | `"${rule.id} · ${rule.title}"`, `"${evidence.id} · $label"` | título legível + “Ver fontes e detalhes técnicos” colapsado | corrigido |
+| [M] | `LevelGraduationViewModel.kt:248`, `:264` | `"...com evidência"`, `"Prova recente com evidência"` | `"...confirmados por uma corrida"`, `"Prova recente confirmada por uma corrida"` | corrigido |
+| [M] | `LevelGraduationViewModel.kt:252` | `"Calibração de limiar válida"` | `"Calibração recente válida"` | corrigido |
 | [OK] | `LevelGraduationViewModel.kt:230`, `:234` | `"...um longão real de 60 min..."` | manter | — |
-| [M] | `RacePredictionBlock.kt:171`, `:172`, `:173` | `"Sem origem de calibração confiável."` | `"Sem calibração recente."` | pendente |
-| [M] | `RacePredictionBlock.kt:158`–`:165` | `"meta alinhada"` | `"meta dentro da sua previsão atual"` | pendente |
-| [M] | `TodayScreen.kt:1015` | `"Aumento ${x}× vs. 4 sem"` | `"Aumento 1,12× · últimos 7 d vs. 4 semanas"` | pendente |
-| [M] | `TodayScreen.kt:1035-1051` | `"42d"`, `"7d"`, `"base − fadiga"` | `"42 dias"`, `"7 dias"`, `"recuperação (base − fadiga)"` | pendente |
-| [M] | `TodayScreen.kt:773-775` | `"ZONA"` + `"esforço"` | `"INTENSIDADE"` + `"Fácil"` | pendente |
+| [M] | `RacePredictionBlock.kt:171`, `:172`, `:173` | `"Sem origem de calibração confiável."` | `"Sem calibração recente."` | corrigido |
+| [M] | `RacePredictionBlock.kt:158`–`:165` | `"meta alinhada"` | `"meta dentro da sua previsão atual"` | corrigido |
+| [M] | `TodayScreen.kt:1015` | `"Aumento ${x}× vs. 4 sem"` | `"Aumento 1,12× · últimos 7 d vs. 4 semanas"` | corrigido |
+| [M] | `TodayScreen.kt:1035-1051` | `"42d"`, `"7d"`, `"base − fadiga"` | `"42 dias"`, `"7 dias"`, `"recuperação (base − fadiga)"` | corrigido |
+| [M] | `TodayScreen.kt:773-775` | `"ZONA"` + `"esforço"` | `"INTENSIDADE"` + `"Fácil"` | corrigido |
 | [OK] | `TodayExplanation.kt:152` | `WorkoutType.LONG -> "longão"` | manter | — |
-| [M] | `TodayExplanation.kt:300-302` | `"A prontidão fica em 50 (moderada)..."` (valor neutro) | `"Ainda não há dados de recuperação, então a prontidão não foi medida."` | pendente |
-| [M] | `TodayExplanation.kt:337-338` | `"FC de repouso $delta bpm acima da média"` (sinal duplo) | `"FC de repouso ${abs(delta)} bpm acima/abaixo da sua média"` | pendente |
-| [M] | `TodayExplanation.kt:96` | `"Esforço percebido (RPE)"` | `"Esforço percebido (1 a 10)"` | pendente |
-| [M] | `TodayExplanation.kt:226-237` | parágrafo de 45 palavras | quebrar em dois blocos | pendente |
-| [M] | `TodayScreen.kt:1545`, `:897-907` | muros de 32 palavras | reduzir | pendente |
-| [M] | `TrendsScreen.kt:604-623`, `:631` | `"com evidência"`, `"não liberam progressão"` | `"confirmadas por corrida"`, `"não contam para aumentar o volume"` | pendente |
-| [M] | `WeeklyReviewFormat.kt:54`, `:58`, `:63` | `"Qualidade: N planejada"`, `"N rebaixada(s)"` | `"Treino forte: N planejado(s)"`, `"N ajustado(s) para fácil"` | pendente |
+| [M] | `TodayExplanation.kt:300-302` | `"A prontidão fica em 50 (moderada)..."` (valor neutro) | `"Ainda não há dados de recuperação, então a prontidão não foi medida."` | corrigido |
+| [M] | `TodayExplanation.kt:337-338` | `"FC de repouso $delta bpm acima da média"` (sinal duplo) | `"FC de repouso ${abs(delta)} bpm acima/abaixo da sua média"` | corrigido |
+| [M] | `TodayExplanation.kt:96` | `"Esforço percebido (RPE)"` | `"Esforço percebido (1 a 10)"` | corrigido |
+| [M] | `TodayExplanation.kt:226-237` | parágrafo de 45 palavras | quebrar em dois blocos | corrigido |
+| [M] | `TodayScreen.kt:1545`, `:897-907` | muros de 32 palavras | reduzir | corrigido |
+| [M] | `TrendsScreen.kt:604-623`, `:631` | `"com evidência"`, `"não liberam progressão"` | `"confirmadas por corrida"`, `"não contam para aumentar o volume"` | corrigido |
+| [M] | `WeeklyReviewFormat.kt:54`, `:58`, `:63` | `"Qualidade: N planejada"`, `"N rebaixada(s)"` | `"Treino forte: N planejado(s)"`, `"N ajustado(s) para fácil"` | corrigido |
 | [OK] | `WeeklyReviewCard.kt:172-174` | `"Longão"` | manter | — |
-| [M] | `ProfileScreen.kt:321`, `:323`, `:324` | `"Meta"`, `"Data"`, `"Tempo alvo"` | `"Meta de tempo"`, `"Data da prova"`, `"Tempo que você quer completar"` | pendente |
-| [M] | `ProfileScreen.kt:494` | `"Rever o tour de boas-vindas"` | `"Rever o tutorial de boas-vindas"` | pendente |
-| [M] | `ProfileScreen.kt:432` | `"...com o que o coach usa..."` | `"...com o que o Coach usa..."` | pendente |
-| [M] | `ProfileScreen.kt:267` | `"Dados usados para individualizar zonas, carga e metas."` | `"Esses dados ajustam suas zonas, sua carga e suas metas."` | pendente |
-| [M] | `ProfileLabels.kt:70` | `"$days · $duration/semana"` | `"$days · $duration por semana"` | pendente |
-| [M] | `ActivitiesScreen.kt:111-113` | `"...ver zonas, splits, o porquê..."` | `"...ver zonas, trechos por km, o porquê..."` | pendente |
-| [M] | `ActivitiesScreen.kt:142`, `:145` + `MeuCoachApp.kt:71` | `"ATIVIDADES"` / `"Suas corridas"` / aba `"Corridas"` | unificar em `"Corridas"` | pendente |
-| [M] | `ActivitiesScreen.kt:229` | `"Cadência $it spm"` | `"Cadência $it passos/min"` | pendente |
-| [M] | `ActivityDetailScreen.kt:740-742` | `"O mapa baixa tiles do OpenStreetMap via OpenFreeMap"` | `"O mapa é baixado de uma fonte pública de mapas"` | pendente |
-| [M] | `StoryStudioSheet.kt:472` | `"Relevo do terreno via Mapzen"` | `"Relevo do terreno: é baixado na primeira vez."` | pendente |
-| [M] | `OnboardingScreen.kt:369-370` | `"O nível muda os estímulos a partir da fase BUILD."` | `"...a partir da fase de construção."` | pendente |
-| [M] | `OnboardingForm.kt:199` | `"Minutos por dia entre 1 e 1.440."` | `"Minutos por dia entre 1 e 1.440 (24 h)."` | pendente |
-| [M] | `TutorialScreen.kt:565` | `"O CICLO"` | `"SEU DIA A DIA"` | pendente |
-| [M] | `TutorialScreen.kt:573` | `"Importa FIT, TCX ou GPX"` | `"Você importa FIT, TCX ou GPX"` | pendente |
-| [M] | `strings.xml:44-45` | `"Sono, dor e energia registrados."` | `"Sono, fadiga, dor e estresse registrados."` | pendente |
-| [M] | `strings.xml:59` | `"Sono, FC de repouso, HRV e SpO₂"` | `"Sono, FC de repouso, variabilidade cardíaca (HRV) e oxigenação (SpO₂)"` | pendente |
+| [M] | `ProfileScreen.kt:321`, `:323`, `:324` | `"Meta"`, `"Data"`, `"Tempo alvo"` | `"Meta de tempo"`, `"Data da prova"`, `"Tempo que você quer completar"` | corrigido |
+| [M] | `ProfileScreen.kt:494` | `"Rever o tour de boas-vindas"` | `"Rever o tutorial de boas-vindas"` | corrigido |
+| [M] | `ProfileScreen.kt:432` | `"...com o que o coach usa..."` | `"...com o que o Coach usa..."` | corrigido |
+| [M] | `ProfileScreen.kt:267` | `"Dados usados para individualizar zonas, carga e metas."` | `"Esses dados ajustam suas zonas, sua carga e suas metas."` | corrigido |
+| [M] | `ProfileLabels.kt:70` | `"$days · $duration/semana"` | `"$days · $duration por semana"` | corrigido |
+| [M] | `ActivitiesScreen.kt:111-113` | `"...ver zonas, splits, o porquê..."` | `"...ver zonas, trechos por km, o porquê..."` | corrigido |
+| [M] | `ActivitiesScreen.kt:142`, `:145` + `MeuCoachApp.kt:71` | `"ATIVIDADES"` / `"Suas corridas"` / aba `"Corridas"` | unificar em `"Corridas"` | corrigido |
+| [M] | `ActivitiesScreen.kt:229` | `"Cadência $it spm"` | `"Cadência $it passos/min"` | corrigido |
+| [M] | `ActivityDetailScreen.kt:740-742` | `"O mapa baixa tiles do OpenStreetMap via OpenFreeMap"` | `"O mapa é baixado de uma fonte pública de mapas"` | corrigido |
+| [M] | `StoryStudioSheet.kt:472` | `"Relevo do terreno via Mapzen"` | `"Relevo do terreno: é baixado na primeira vez."` | corrigido |
+| [M] | `OnboardingScreen.kt:369-370` | `"O nível muda os estímulos a partir da fase BUILD."` | `"...a partir da fase de construção."` | corrigido |
+| [M] | `OnboardingForm.kt:199` | `"Minutos por dia entre 1 e 1.440."` | `"Minutos por dia entre 1 e 1.440 (24 h)."` | corrigido |
+| [M] | `TutorialScreen.kt:565` | `"O CICLO"` | `"SEU DIA A DIA"` | corrigido |
+| [M] | `TutorialScreen.kt:573` | `"Importa FIT, TCX ou GPX"` | `"Você importa FIT, TCX ou GPX"` | corrigido |
+| [M] | `strings.xml:44-45` | `"Sono, dor e energia registrados."` | `"Sono, fadiga, dor e estresse registrados."` | corrigido |
+| [M] | `strings.xml:59` | `"Sono, FC de repouso, HRV e SpO₂"` | `"Sono, FC de repouso, variabilidade cardíaca (HRV) e oxigenação (SpO₂)"` | corrigido |
 | [OK] | `TrendsScreen.kt:375`, `:383`, `:388`, `:392`, `:398`, `:402`, `:408`, `:413`, `:222`, `:281`, `:806`, `:1005`, `:1065`, `:857-863`, `:1335-1339`, `:144-145` | seção "Como ler a carga" | manter (padrão de referência) | — |
 | [OK] | `CheckInScreen.kt:139`, `:150-180`, `:194`, `:200`, `:228`, `:234`, `:265` | check-in | manter | — |
 | [OK] | `CalibrationScreen.kt` (tela inteira) | calibração | manter | — |

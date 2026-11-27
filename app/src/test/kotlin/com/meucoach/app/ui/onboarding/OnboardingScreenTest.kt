@@ -73,8 +73,8 @@ class OnboardingScreenTest {
         setContent(state = step(0))
 
         compose.onNodeWithTag("onboarding-list")
-            .performScrollToNode(hasText("O nível muda os estímulos a partir da fase BUILD", substring = true))
-        compose.onNodeWithText("O nível muda os estímulos a partir da fase BUILD", substring = true)
+            .performScrollToNode(hasText("O nível muda os estímulos a partir da fase de construção", substring = true))
+        compose.onNodeWithText("O nível muda os estímulos a partir da fase de construção", substring = true)
             .assertIsDisplayed()
     }
 

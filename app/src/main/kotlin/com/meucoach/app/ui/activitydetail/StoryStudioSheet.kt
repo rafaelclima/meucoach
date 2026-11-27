@@ -469,7 +469,7 @@ private fun StoryVideoContent(
         if (state.recipe.mapStyle == StoryMapStyle.TERRAIN) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Relevo do terreno via Mapzen · é baixado na primeira vez.",
+                text = "Relevo do terreno: é baixado na primeira vez.",
                 style = McTextStyles.caption,
                 color = colors.textTertiary,
             )

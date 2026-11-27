@@ -67,7 +67,7 @@ fun availabilityLabel(profile: AthleteProfile): String {
         .joinToString(", ") { day -> day.getDisplayName(TextStyle.SHORT, PT_BR).trimEnd('.') }
     val hours = availability.totalMinutes / 60.0
     val duration = if (hours % 1.0 == 0.0) "${hours.toInt()} h" else String.format(PT_BR, "%.1f h", hours)
-    return "$days · $duration/semana"
+    return "$days · $duration por semana"
 }
 
 fun goalLabel(profile: AthleteProfile): String = profile.goal?.type?.let(::goalLabel) ?: "Saúde geral"

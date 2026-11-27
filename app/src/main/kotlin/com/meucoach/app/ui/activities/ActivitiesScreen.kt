@@ -109,7 +109,7 @@ internal fun ActivitiesContent(
                         FirstRunTipCard(
                             tipId = "first-import",
                             title = "Corrida importada",
-                            body = "Toque em uma corrida para ver zonas, splits, o porquê do esforço " +
+                            body = "Toque em uma corrida para ver zonas, trechos por km, o porquê do esforço " +
                                 "e o story para compartilhar.",
                         )
                     }
@@ -139,10 +139,10 @@ internal fun ActivitiesContent(
 private fun ActivitiesHeader(state: ActivitiesUiState, onImportClick: () -> Unit) {
     val colors = McTheme.colors
     Column {
-        Text(text = "ATIVIDADES", style = McTextStyles.overline, color = colors.textTertiary)
+        Text(text = "Corridas", style = McTextStyles.overline, color = colors.textTertiary)
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Suas corridas",
+            text = "Corridas",
             style = MaterialTheme.typography.headlineLarge,
             color = colors.textPrimary,
         )
@@ -226,7 +226,7 @@ private fun ActivityCard(activity: ActivitySummary, onClick: () -> Unit) {
         ActivityStats(activity = activity, largeText = LocalDensity.current.fontScale >= 1.5f)
         val details = buildList {
             heartRateLabel(activity.averageHeartRate, activity.maxHeartRate)?.let { add("FC $it bpm") }
-            activity.averageCadenceSpm?.let { add("Cadência $it spm") }
+            activity.averageCadenceSpm?.let { add("Cadência $it passos/min") }
         }
         if (details.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))

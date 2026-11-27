@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F6 concluídas; F7–F9 pendentes.
+F2–F7 concluídas; F8–F9 pendentes.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -939,9 +939,21 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   (`CoachNextLabels`), `Índice de aptidão…` + `O ideal é 80%` + `prontidão
   baixa` (`CoachProgressLabels`). 32 linhas do baseline da UI removidas
   (7 F7 restantes); **gíria do Coach intacta**; `[OK]` mantidos.
-- [ ] **F7 · UI — Tendências, Perfil, Previsão, Atividades, Level.** `CTL`,
-  `Monotonia`, “vermelho”, “pace” em prosa, “Riegel”, IDs crus no card de
-  graduação.
+- [x] **F7 · UI — Tendências, Perfil, Previsão, Atividades, Level.** `LevelGraduationViewModel`
+  (`Carga…`, `Variedade acima de 2,0…`, `não está baixa`, `confirmados por uma
+  corrida`, `recente válida`), `LevelGraduationCard` (títulos legíveis + `Ver
+  fontes e detalhes técnicos` colapsado), `RacePredictionBlock` (`ritmo do
+  plano`, `forma recente`, `meta dentro da sua previsão atual`, `Sem calibração
+  recente`), `RaceEventCard` (ritmo, `0 a 59`), `TodayScreen` (`INTENSIDADE` +
+  `Fácil`, pill `últimos 7 d vs. 4 semanas`, `42/7 dias`, `recuperação (base −
+  fadiga)`, check-in com fadiga/estresse, muros reduzidos), `TodayExplanation`
+  (`1 a 10`, `não foi medida`, `acima/abaixo da sua média`, confiança em 2
+  blocos), `TrendsScreen` + `WeeklyReviewFormat` (`confirmadas por corrida`,
+  `não contam para aumentar o volume`, `Treino forte: N planejado(s), N
+  ajustado(s) para fácil`), Perfil (`Meta/Data da prova`, `Coach`, tutorial),
+  Atividades (`Corridas`, `trechos por km`, `passos/min`), mapa/relevo sem
+  marca, onboarding/tutorial em fala de corredor, `strings.xml` com siglas por
+  extenso. 21 goldens Roborazzi regravados; baseline da UI zerada; `[OK]` mantidos.
 - [ ] **F8 · UI — bugs literais e muros de texto.** `dia(s)`, concordância de
   “Volume”, range duplicado, `Recuperação X/20`, blocos acima de 30 palavras.
 - [ ] **F9 · Fechar o gate.** Remover o baseline; lista negra cheia ativa no

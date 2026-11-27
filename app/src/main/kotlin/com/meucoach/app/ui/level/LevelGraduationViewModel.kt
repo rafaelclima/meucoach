@@ -245,25 +245,25 @@ private fun EvaluateLevelGraduationResult.Stay.toNextUi(profile: AthleteProfile?
 
 private fun missingCriterionLabel(key: String): String = when (key) {
     LevelGraduationEngine.MISSING_STRONG_WEEKS ->
-        "6 semanas com pelo menos 80% dos treinos concluídos com evidência"
+        "6 semanas com pelo menos 80% dos treinos confirmados por uma corrida"
 
     LevelGraduationEngine.MISSING_EFFORTS -> "3 esforços de 20–35 min com FC e ritmo"
 
-    LevelGraduationEngine.MISSING_CALIBRATION -> "Calibração de limiar válida"
+    LevelGraduationEngine.MISSING_CALIBRATION -> "Calibração recente válida"
 
     LevelGraduationEngine.MISSING_ILLNESS -> "14 dias sem doença ou lesão"
 
-    LevelGraduationEngine.MISSING_READINESS -> "Prontidão atual fora do vermelho"
+    LevelGraduationEngine.MISSING_READINESS -> "Prontidão atual não está baixa"
 
     LevelGraduationEngine.MISSING_LONG_RUN -> "Longão real de pelo menos 60 min"
 
-    LevelGraduationEngine.MISSING_CTL -> "CTL estável ou crescente nas últimas 4 semanas"
+    LevelGraduationEngine.MISSING_CTL -> "Carga das últimas 4 semanas estável ou subindo"
 
     LevelGraduationEngine.MISSING_LONG_RUN_90 -> "Longão real de pelo menos 90 min"
 
-    LevelGraduationEngine.MISSING_RACE -> "Prova recente com evidência"
+    LevelGraduationEngine.MISSING_RACE -> "Prova recente confirmada por uma corrida"
 
-    LevelGraduationEngine.MISSING_MONOTONY -> "Monotonia abaixo de 2,0 nas últimas 4 semanas"
+    LevelGraduationEngine.MISSING_MONOTONY -> "Variedade acima de 2,0 nas últimas 4 semanas"
 
     else -> key
 }

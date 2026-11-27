@@ -981,8 +981,8 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Aumento 1,42× vs. 4 sem"))
-        compose.onNodeWithText("Aumento 1,42× vs. 4 sem").assertIsDisplayed()
+        list.performScrollToNode(hasText("Aumento 1,42× · últimos 7 d vs. 4 semanas"))
+        compose.onNodeWithText("Aumento 1,42× · últimos 7 d vs. 4 semanas").assertIsDisplayed()
     }
 
     @Test
@@ -1066,8 +1066,8 @@ class TodayPlanTest {
         }
 
         val list = compose.onNodeWithTag("today-list")
-        list.performScrollToNode(hasText("Sono, dor e energia registrados."))
-        compose.onNodeWithText("Sono, dor e energia registrados.").assertIsDisplayed()
+        list.performScrollToNode(hasText("Sono, fadiga, dor e estresse registrados."))
+        compose.onNodeWithText("Sono, fadiga, dor e estresse registrados.").assertIsDisplayed()
         compose.onNodeWithText("Você pode revisar", substring = true).assertDoesNotExist()
     }
 

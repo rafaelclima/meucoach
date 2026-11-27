@@ -31,7 +31,7 @@ internal object WeeklyReviewFormat {
 
     fun adherenceDetail(adherence: WeeklyAdherence): String {
         val parts = buildList {
-            add("${adherence.verified} com evidência")
+            add("${adherence.verified} confirmadas por corrida")
             if (adherence.manual > 0) add("${adherence.manual} sem registro")
             if (adherence.legacy > 0) {
                 add("${adherence.legacy} ${plural(adherence.legacy, "não verificada", "não verificadas")}")
@@ -47,11 +47,11 @@ internal object WeeklyReviewFormat {
 
     /**
      * Quality opportunities versus day decisions (FR-401/FR-408, ADR 0044/0050):
-     * "1 planejada, 1 mantida" or "1 planejada, 1 rebaixada (motivo)". Only the
+     * "1 planejado, 1 mantida" or "1 planejado, 1 ajustado para fácil (motivo)". Only the
      * stored reason appears; nothing is invented.
      */
     fun qualityLine(quality: WeeklyQuality): String {
-        val planned = "Qualidade: ${quality.planned} ${plural(quality.planned, "planejada", "planejadas")}"
+        val planned = "Treino forte: ${quality.planned} ${plural(quality.planned, "planejado", "planejados")}"
         val kept = if (quality.kept == 0) {
             null
         } else {
@@ -60,7 +60,7 @@ internal object WeeklyReviewFormat {
         val downgraded = if (quality.downgraded == 0) {
             null
         } else {
-            "${quality.downgraded} ${plural(quality.downgraded, "rebaixada", "rebaixadas")} " +
+            "${quality.downgraded} ${plural(quality.downgraded, "ajustado", "ajustados")} para fácil " +
                 "(${quality.firstDowngradeDetail})"
         }
         return listOfNotNull(planned, kept, downgraded).joinToString(", ")

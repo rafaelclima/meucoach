@@ -1,6 +1,107 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F6: UI do Coach sem nome interno e com saudação única, baseline da UI com 7 violações F7)
+**Atualizado:** 27/11/2026 (Ciclo 5, F7: demais telas em fala de corredor, 21 goldens regravados, baseline zerada — domínio 0 + UI 0)
+
+## Sessão 2026-11-27 — Ciclo 5, F7: Tendências, Perfil, Previsão, Atividades, Level
+
+**Objetivo:** corrigir o restante das telas conforme as linhas F7 da auditoria
+(`docs/AUDITORIA_UX_WRITING_2026-11.md`): jargão (`CTL`, `Monotonia`, `pace` em
+prosa, `Riegel`, `splits`, `spm`, `tiles`, `Mapzen`, `BUILD`), “vermelho”,
+concordância (`Volume:`, `Boa!`, `rebaixada`, `planejada`) e muros de texto.
+`[OK]` mantidos (seção “Como ler a carga”, check-in, calibração, Health
+Connect, zonas/comparação, onboarding/tutorial já certos, revisão da semana).
+Nenhuma regra fisiológica, limiar, volume, alvo, critério de qualidade ou
+`ruleId`/`evidenceId` muda; schema Room v23 intacto; sem texto persistido novo
+(labels de leitura, sem `engineVersion`).
+
+### Concluído
+
+- **Level (`LevelGraduationViewModel` + `LevelGraduationCard`, sem bump):**
+  `CTL estável…` → `Carga das últimas 4 semanas estável ou subindo`;
+  `Monotonia…` → `Variedade acima de 2,0 nas últimas 4 semanas` (texto literal
+  da auditoria F7); `fora do vermelho` → `não está baixa`; `…com evidência` →
+  `…confirmados por uma corrida`; `Prova recente com evidência` → `Prova
+  recente confirmada por uma corrida`; `Calibração de limiar válida` →
+  `Calibração recente válida`. Card: “Por quê?” agora mostra só títulos
+  legíveis; IDs (`R-/EV-`) foram para `Ver fontes e detalhes técnicos`
+  colapsado (novo toggle, 48 dp). `Longão…` mantido.
+- **Previsão (`RacePredictionBlock` + `RaceEventCard`, sem bump):** `O pace do
+  plano…` → `O ritmo do plano…`; `checagem de Riegel` → `sua forma recente,
+  não só a meta`; `meta alinhada` → `meta dentro da sua previsão atual`;
+  `Sem origem de calibração confiável.` → `Sem calibração recente.`;
+  `…em pace, faixa ou previsão` → `…em ritmo, faixa ou previsão`;
+  `(0–59)…(0–59)` → `minutos e segundos (0 a 59)` no erro de horas.
+- **Hoje (`TodayScreen` + `TodayExplanation`, sem bump):** `ZONA` + `esforço` →
+  `INTENSIDADE` + `Fácil` (texto literal da auditoria); pill `Aumento N× vs.
+  4 sem` → `Aumento N× · últimos 7 d vs. 4 semanas`; hints `42d`/`7d`/`base −
+  fadiga` → `42 dias`/`7 dias`/`recuperação (base − fadiga)`; check-in feito
+  `Sono, dor e energia registrados.` → `Sono, fadiga, dor e estresse
+  registrados.` (idem no `15 s para…` vizinho, mesmo conceito); muros
+  reduzidos (`todayDoneNote` MANUAL e `plan-manual-note`, mantido o substring
+  `sem vincular uma corrida` do teste); `Esforço percebido (RPE)` →
+  `Esforço percebido (1 a 10)`; vazio sem valor neutro (`…a prontidão não foi
+  medida`); FC de repouso sem sinal duplo (`${abs(delta)}… acima/abaixo da
+  sua média`); nota de confiança LOW/MEDIUM em dois parágrafos (`\n\n`).
+  `quality-restored-note` (`a qualidade foi liberada`) não está na auditoria
+  nem no gate — intacto.
+- **Tendências + revisão (`TrendsScreen` + `WeeklyReviewFormat`, sem bump,
+  cobre a baseline F7):** `com evidência` → `confirmadas por corrida`
+  (content-desc, linha e `adherenceDetail` compartilhado); `não liberam
+  progressão` → `não contam para aumentar o volume`; `Qualidade: N
+  planejada(s)… rebaixada(s)` → `Treino forte: N planejado(s)… ajustado(s)
+  para fácil` (mantido `mantida(s)`).
+- **Perfil/atividades/detalhe (`ProfileScreen`, `ProfileLabels`,
+  `ActivitiesScreen`, `ActivityDetailScreen`, sem bump):** `Dados usados para
+  individualizar…` → `Esses dados ajustam…`; `Meta`/`Data`/`Tempo alvo` →
+  `Meta de tempo`/`Data da prova`/`Tempo que você quer completar`; `coach usa`
+  → `Coach usa`; `tour` → `tutorial`; `$duration/semana` → `$duration por
+  semana`; dica `splits` → `trechos por km`; header `ATIVIDADES` + `Suas
+  corridas` → `Corridas`/`Corridas` (aba já era `Corridas`); `Cadência $it
+  spm` → `passos/min`; mapa `tiles do OpenStreetMap via OpenFreeMap` → `fonte
+  pública de mapas` (mantida a 2ª frase sobre coordenadas).
+- **Story/onboarding/tutorial/strings (sem bump):** relevo `via Mapzen ·` →
+  `Relevo do terreno: é baixado na primeira vez.`; onboarding `fase BUILD` →
+  `fase de construção`; `entre 1 e 1.440.` → `entre 1 e 1.440 (24 h).`;
+  `O CICLO` → `SEU DIA A DIA`; `Importa FIT…` → `Você importa FIT…`
+  (`strings.xml`, onde o texto mora); health body com siglas por extenso
+  (`variabilidade cardíaca (HRV)`, `oxigenação (SpO₂)`).
+- **Testes:** 40+ asserts atualizados na mesma fatia (`WeeklyReviewFormatTest`,
+  `TrendsScreenTest`, `LevelGraduationCardTest` com o novo toggle de fontes,
+  `RaceEventSectionTest`, `TodayPlanTest`, `TodayExplanationLoadTest`,
+  `ProfileLabelsTest`, `StoryStudioContentTest`, `OnboardingScreenTest`).
+  `LevelGraduationViewModelTest`/`ProfileTest` usam a copy antiga do domínio
+  como fixture arbitrária — intactos. `CoachSessionReference.TITLE`
+  (`Referência do motor`, domínio) e `O motor decide o treino` (sheet [OK])
+  não estão na auditoria — intactos.
+- **Goldens:** 21 PNGs regravados (`recordRoborazziDebug`: activities,
+  onboarding ×2, profile ×6, briefing ×2, today ×3, weekly-review ×3, tutorial
+  ×4) e `verifyRoborazziDebug` verde. Baseline da UI: 7 linhas F7 removidas no
+  mesmo commit (só encolhe). Restam 0 no domínio + 0 na UI.
+- **Desvios documentados:** (1) `MeuCoachApp.kt:71` já era `Corridas` — sem
+  edição. (2) `TodayScreen` “15 s…” e `adherenceDetail` não citados com
+  arquivo:linha, mas mesmo conceito da fatia — corrigidos junto. (3) F7 pede
+  `Variedade acima de 2,0` no ViewModel (≠ `abaixo` do domínio F5) — aplicado
+  literal; semântica do rótulo segue a auditoria.
+
+### Gates
+
+- `:app:testDebugUnitTest` inteiro verde; 5 falhas intermediárias eram asserts
+  da copy antiga na mesma fatia (prontidão maiúscula ×2, cheer `Rodagem`,
+  `availabilityLabel`, `adherenceDetail`) — atualizadas.
+- `./gradlew spotlessApply` (1 estouro de 120 col. quebrado) + `check` +
+  `spotlessCheck` + `verifyRoborazziDebug` verdes; nenhum dado real no diff;
+  sem dependência nova.
+
+### Por que nenhum bump (ADR 0071 §2.7)
+
+- Todas as strings F7 são labels resolvidos na leitura; nenhum
+  `rationale`/`title`/`decisionDetail` persistido muda — texto novo sem versão
+  nova (precedentes F4/F6).
+
+### Pendente (F8–F9, fora desta fatia)
+
+- F8 bugs literais e muros de texto → F9 fechar o gate (remover baselines). A
+  auditoria marca F8/F9 como pendentes; F1–F7 estão `corrigido`.
 
 ## Sessão 2026-11-27 — Ciclo 5, F6: UI do Coach (voz e rótulos)
 

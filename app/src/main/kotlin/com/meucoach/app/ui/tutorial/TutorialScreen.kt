@@ -562,7 +562,7 @@ private fun LoopVisual(state: TutorialUiState) {
     val colors = McTheme.colors
     McCard(variant = McCardVariant.ELEVATED, modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "O CICLO",
+            text = "SEU DIA A DIA",
             style = McTextStyles.overline,
             color = colors.textTertiary,
         )

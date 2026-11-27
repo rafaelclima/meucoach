@@ -383,8 +383,8 @@ class TrendsScreenTest {
         list.performScrollToNode(hasText("2 de 4 sessões concluídas"))
         compose.onNodeWithText("2 de 4 sessões concluídas").assertIsDisplayed()
         compose.onNodeWithText("50%").assertIsDisplayed()
-        list.performScrollToNode(hasText("1 com evidência · 1 sem registro · 2 puladas"))
-        compose.onNodeWithText("1 com evidência · 1 sem registro · 2 puladas").assertIsDisplayed()
+        list.performScrollToNode(hasText("1 confirmadas por corrida · 1 sem registro · 2 puladas"))
+        compose.onNodeWithText("1 confirmadas por corrida · 1 sem registro · 2 puladas").assertIsDisplayed()
 
         list.performScrollToNode(hasText("2h30"))
         compose.onNodeWithText("2h30").assertIsDisplayed()
@@ -431,7 +431,9 @@ class TrendsScreenTest {
         val list = compose.onNodeWithTag("trends-list")
         list.performScrollToNode(hasTestTag("weekly-review-quality"))
         compose.onNodeWithTag("weekly-review-quality").assertIsDisplayed()
-        compose.onNodeWithText("Qualidade: 1 planejada, 1 rebaixada (check-in de hoje ausente)").assertIsDisplayed()
+        compose.onNodeWithText(
+            "Treino forte: 1 planejado, 1 ajustado para fácil (check-in de hoje ausente)",
+        ).assertIsDisplayed()
         list.performScrollToNode(hasText("Inclui 28 min de treino fora do plano — contou para o volume."))
         compose.onNodeWithText("Inclui 28 min de treino fora do plano — contou para o volume.").assertIsDisplayed()
     }

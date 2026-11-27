@@ -264,7 +264,7 @@ private fun ProfileDetails(
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Dados usados para individualizar zonas, carga e metas.",
+                            text = "Esses dados ajustam suas zonas, sua carga e suas metas.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colors.textSecondary,
                         )
@@ -318,10 +318,10 @@ private fun ProfileDetails(
         item { McSectionHeader(title = "Objetivo") }
         item {
             McCard(variant = McCardVariant.INSET) {
-                SummaryRow("Meta", goalLabel(profile))
+                SummaryRow("Meta de tempo", goalLabel(profile))
                 if (profile.goal != null) {
-                    SummaryRow("Data", targetDateLabel(profile))
-                    SummaryRow("Tempo alvo", targetTimeLabel(profile.goal?.targetTimeSec))
+                    SummaryRow("Data da prova", targetDateLabel(profile))
+                    SummaryRow("Tempo que você quer completar", targetTimeLabel(profile.goal?.targetTimeSec))
                 }
                 SummaryRow("Disponibilidade", availabilityLabel(profile))
                 val plannedRace = raceEvents.any { it.status == RaceStatus.PLANNED }
@@ -429,7 +429,7 @@ private fun ProfileDetails(
                             color = colors.textPrimary,
                         )
                         Text(
-                            text = "Seu painel de recuperação, com o que o coach usa na prontidão.",
+                            text = "Seu painel de recuperação, com o que o Coach usa na prontidão.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -491,7 +491,7 @@ private fun ProfileDetails(
         item {
             McCard(variant = McCardVariant.INSET) {
                 Text(
-                    text = "Rever o tour de boas-vindas",
+                    text = "Rever o tutorial de boas-vindas",
                     style = MaterialTheme.typography.titleMedium,
                     color = colors.textPrimary,
                 )
