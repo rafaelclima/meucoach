@@ -76,35 +76,35 @@ F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 
 | Prio | Arquivo:linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `QualityGate.kt:284` | `"ACWR ${decimal(acwr)} > ${decimal(LoadSnapshot.ACWR_MAX)}"` | `"carga dos últimos 7 dias ${decimal(acwr)}×, acima de ${decimal(LoadSnapshot.ACWR_MAX)}×"` | pendente |
-| [C] | `QualityGate.kt:272` | `"strain semanal acima de 2× a média crônica"` | `"carga desta semana mais que o dobro da sua base"` | pendente |
-| [C] | `QualityGate.kt:260-261` | `"monotonia ${decimal(it)} ≥ ${decimal(LoadSnapshot.MONOTONY_MAX)}"` | `"semana muito repetitiva (variedade ${decimal(it)})"` | pendente |
-| [C] | `QualityGate.kt:303` | `"rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão"` | `"primeira semana depois da prova: 1 treino forte curto, sem aumentar o volume"` | pendente |
-| [M] | `QualityGate.kt:97`, `:150` | `"prontidão vermelha (score N)"`, `"prontidão moderada (score N)"` | `"prontidão baixa (N/100)"`, `"prontidão moderada (N/100)"` | pendente |
-| [M] | `QualityGate.kt:113` | `"nível iniciante: o treino forte fica para depois da graduação"` | `"nível iniciante: o treino forte vem depois de você subir de nível"` | pendente |
-| [M] | `QualityGate.kt:124` | `"check-in subjetivo de hoje ainda não foi respondido"` | `"você ainda não respondeu o check-in de hoje"` | pendente |
-| [M] | `QualityGate.kt:173`, `:195` | `"semana de prova: sem qualidade principal"`, `"... apenas a dose pequena estrutural"` | `"semana de prova: sem o treino forte principal"`, `"... só a dose pequena de sempre"` | pendente |
-| [M] | `QualityGate.kt:232` | `"carga objetiva insuficiente: N de 28 dias"` | `"faltam dados de carga: N de 28 dias com FC ou ritmo"` | pendente |
+| [C] | `QualityGate.kt:284` | `"ACWR ${decimal(acwr)} > ${decimal(LoadSnapshot.ACWR_MAX)}"` | `"carga dos últimos 7 dias ${decimal(acwr)}×, acima de ${decimal(LoadSnapshot.ACWR_MAX)}×"` | corrigido |
+| [C] | `QualityGate.kt:272` | `"strain semanal acima de 2× a média crônica"` | `"carga desta semana mais que o dobro da sua base"` | corrigido |
+| [C] | `QualityGate.kt:260-261` | `"monotonia ${decimal(it)} ≥ ${decimal(LoadSnapshot.MONOTONY_MAX)}"` | `"semana muito repetitiva (variedade ${decimal(it)})"` | corrigido |
+| [C] | `QualityGate.kt:303` | `"rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão"` | `"primeira semana depois da prova: 1 treino forte curto, sem aumentar o volume"` | corrigido |
+| [M] | `QualityGate.kt:97`, `:150` | `"prontidão vermelha (score N)"`, `"prontidão moderada (score N)"` | `"prontidão baixa (N/100)"`, `"prontidão moderada (N/100)"` | corrigido |
+| [M] | `QualityGate.kt:113` | `"nível iniciante: o treino forte fica para depois da graduação"` | `"nível iniciante: o treino forte vem depois de você subir de nível"` | corrigido |
+| [M] | `QualityGate.kt:124` | `"check-in subjetivo de hoje ainda não foi respondido"` | `"você ainda não respondeu o check-in de hoje"` | corrigido |
+| [M] | `QualityGate.kt:173`, `:195` | `"semana de prova: sem qualidade principal"`, `"... apenas a dose pequena estrutural"` | `"semana de prova: sem o treino forte principal"`, `"... só a dose pequena de sempre"` | corrigido |
+| [M] | `QualityGate.kt:232` | `"carga objetiva insuficiente: N de 28 dias"` | `"faltam dados de carga: N de 28 dias com FC ou ritmo"` | corrigido |
 | [OK] | `QualityGate.kt:102`, `:104`, `:116`, `:127`, `:138`, `:153`, `:165`, `:176`, `:187`, `:198`, `:223`, `:264`, `:275`, `:287`, `:343` | 15 `unlockHint` em 2ª pessoa, verbo de ação, zero jargão | manter (padrão a replicar) | — |
 
 ### Catálogo de explicações (`ExplanationCatalog.kt`)
 
 | Prio | Linha | Texto atual | Sugestão | Status |
 |---|---|---|---|---|
-| [C] | `:41` | `"Prova ou teste recente define VDOT e LTHR"` | `"Prova ou teste recente define seu índice de aptidão e sua FC no limite"` | pendente |
-| [C] | `:79` | `"Previsão de tempo por VDOT, com faixa e checagem de Riegel"` | `"Previsão de tempo a partir da sua forma recente, com faixa de segurança"` | pendente |
-| [C] | `:107` | `"Catálogo de qualidade por fase, nível e distância, com PEAK específico"` | `"Escolha do estímulo por etapa do treino, nível e distância da prova"` | pendente |
-| [C] | `:32` | `"Longão é a sessão mais longa; piso 45/60 e alvo de 25–30%"` | `"O longão é a sessão mais longa da semana; 45 a 60 min, mirando 25–30% do volume"` | pendente |
-| [M] | `:87`, `:91` | `"Graduação para intermediário por consistência demonstrada, com aceite"` | `"Você já tem consistência para subir para intermediário. Você aceita?"` | pendente |
-| [M] | `:54` | `"Volume cresce no máximo 6% e só com semana concluída e guardrails verdes"` | `"O volume cresce no máximo 6%, e só depois de uma semana cumprida com todas as travas liberadas"` | pendente |
-| [M] | `:103` | `"Oportunidade de qualidade: o plano propõe e o dia confirma"` | `"Oportunidade de treino forte: a semana propõe e o dia confirma"` | pendente |
-| [M] | `:111` | `"Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão"` | `"Entrada: com prova recente, o app libera 1 treino forte curto, sem aumentar o volume"` | pendente |
-| [M] | `:67` | `"Uma decisão por dia, a mesma em todas as telas"` | `"Cada dia tem uma decisão só, igual em todas as telas"` | pendente |
-| [M] | `:26` | `"Carga subindo rápido é alerta, não meta"` | `"Carga subindo rápido é um sinal de alerta, não uma meta de treino"` | pendente |
-| [M] | `:15` | `"Dado ausente não vira zero"` | `"Falta de dado nunca vira zero"` | pendente |
-| [M] | `:119` | `"A semana é lida como fato, com dado ausente como ausente"` | `"A semana é um retrato do que aconteceu; o que falta de dado aparece como falta"` | pendente |
-| [M] | `:56` | `"Mudança de perfil gera revisão sugerida, nunca automática"` | `"Mudar o perfil gera uma revisão sugerida — nunca aplicada sozinha"` | pendente |
-| [M] | `:24` | `"Sem check-in subjetivo o treino forte não é liberado"` | `"Sem o check-in de hoje, o treino forte não é liberado"` | pendente |
+| [C] | `:41` | `"Prova ou teste recente define VDOT e LTHR"` | `"Prova ou teste recente define seu índice de aptidão e sua FC no limite"` | corrigido |
+| [C] | `:79` | `"Previsão de tempo por VDOT, com faixa e checagem de Riegel"` | `"Previsão de tempo a partir da sua forma recente, com faixa de segurança"` | corrigido |
+| [C] | `:107` | `"Catálogo de qualidade por fase, nível e distância, com PEAK específico"` | `"Escolha do estímulo por etapa do treino, nível e distância da prova"` | corrigido |
+| [C] | `:32` | `"Longão é a sessão mais longa; piso 45/60 e alvo de 25–30%"` | `"O longão é a sessão mais longa da semana; 45 a 60 min, mirando 25–30% do volume"` | corrigido |
+| [M] | `:87`, `:91` | `"Graduação para intermediário por consistência demonstrada, com aceite"` | `"Você já tem consistência para subir para intermediário. Você aceita?"` | corrigido |
+| [M] | `:54` | `"Volume cresce no máximo 6% e só com semana concluída e guardrails verdes"` | `"O volume cresce no máximo 6%, e só depois de uma semana cumprida com todas as travas liberadas"` | corrigido |
+| [M] | `:103` | `"Oportunidade de qualidade: o plano propõe e o dia confirma"` | `"Oportunidade de treino forte: a semana propõe e o dia confirma"` | corrigido |
+| [M] | `:111` | `"Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão"` | `"Entrada: com prova recente, o app libera 1 treino forte curto, sem aumentar o volume"` | corrigido |
+| [M] | `:67` | `"Uma decisão por dia, a mesma em todas as telas"` | `"Cada dia tem uma decisão só, igual em todas as telas"` | corrigido |
+| [M] | `:26` | `"Carga subindo rápido é alerta, não meta"` | `"Carga subindo rápido é um sinal de alerta, não uma meta de treino"` | corrigido |
+| [M] | `:15` | `"Dado ausente não vira zero"` | `"Falta de dado nunca vira zero"` | corrigido |
+| [M] | `:119` | `"A semana é lida como fato, com dado ausente como ausente"` | `"A semana é um retrato do que aconteceu; o que falta de dado aparece como falta"` | corrigido |
+| [M] | `:56` | `"Mudança de perfil gera revisão sugerida, nunca automática"` | `"Mudar o perfil gera uma revisão sugerida — nunca aplicada sozinha"` | corrigido |
+| [M] | `:24` | `"Sem check-in subjetivo o treino forte não é liberado"` | `"Sem o check-in de hoje, o treino forte não é liberado"` | corrigido |
 | [OK] | `:14`, `:18`, `:20`, `:21`, `:31`, `:33`–`:38`, `:45`, `:49`, `:51`, `:63`, `:65`, `:66`, `:68`, `:71`, `:75`, `:83`, `:95`, `:99`, `:115`, `:126`–`:217` | títulos restantes e fontes | manter | — |
 
 ---

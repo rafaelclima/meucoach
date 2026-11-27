@@ -66,7 +66,7 @@ class QualityGateTest {
 
         assertThat(eligibility.reason).isEqualTo(QualityBlockReason.ILLNESS_OR_RED_READINESS)
         assertThat(eligibility.ruleId).isEqualTo("R-READY-03")
-        assertThat(eligibility.detail).contains("vermelha").contains("20")
+        assertThat(eligibility.detail).contains("baixa").contains("20")
     }
 
     @Test
@@ -220,7 +220,7 @@ class QualityGateTest {
         )
 
         assertThat(eligibility.reason).isEqualTo(QualityBlockReason.LOAD_INSUFFICIENT)
-        assertThat(eligibility.detail).contains("objetiva")
+        assertThat(eligibility.detail).contains("FC ou ritmo")
     }
 
     @Test
@@ -270,7 +270,7 @@ class QualityGateTest {
         )
 
         assertThat(eligibility.reason).isEqualTo(QualityBlockReason.STRAIN_SPIKE)
-        assertThat(eligibility.detail).contains("strain")
+        assertThat(eligibility.detail).contains("dobro")
     }
 
     @Test

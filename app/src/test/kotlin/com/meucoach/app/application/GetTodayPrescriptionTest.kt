@@ -91,7 +91,7 @@ class GetTodayPrescriptionTest {
 
         val upgraded = useCase(request(plan = plan()))
 
-        assertThat(upgraded.engineVersion).isEqualTo("daily-prescription-v7")
+        assertThat(upgraded.engineVersion).isEqualTo("daily-prescription-v8")
         assertThat(upgraded.id).isNotEqualTo(current.id)
         assertThat(repository.getLatest(today)?.id).isEqualTo(upgraded.id)
         assertThat(repository.getVersions(today)).hasSize(3)
@@ -288,7 +288,7 @@ class GetTodayPrescriptionTest {
         )
 
         assertThat(first.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
-        assertThat(first.rationale).contains("monotonia")
+        assertThat(first.rationale).contains("muito repetitiva")
         assertThat(first.ruleIds).contains("R-LOAD-03", "R-PRESC-02")
         assertThat(restored.adjustment).isEqualTo(PrescriptionAdjustment.KEEP)
         assertThat(restored.prescribedType).isEqualTo(WorkoutType.QUALITY)

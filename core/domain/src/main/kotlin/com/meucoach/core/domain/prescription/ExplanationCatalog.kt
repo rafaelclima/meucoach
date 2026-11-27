@@ -12,7 +12,7 @@ data class EvidenceExplanation(val id: String, val title: String, val source: St
 object ExplanationCatalog {
     private val rules = mapOf(
         "R-ZONE-01" to RuleExplanation("R-ZONE-01", "Zonas pelo limite de esforço"),
-        "R-DATA-01" to RuleExplanation("R-DATA-01", "Dado ausente não vira zero"),
+        "R-DATA-01" to RuleExplanation("R-DATA-01", "Falta de dado nunca vira zero"),
         "R-READY-01" to RuleExplanation(
             "R-READY-01",
             "Prontidão combina check-in, sono, variabilidade e FC de repouso",
@@ -21,15 +21,22 @@ object ExplanationCatalog {
         "R-READY-04" to RuleExplanation("R-READY-04", "Sono curto bloqueia treino forte"),
         "R-READY-06" to RuleExplanation(
             "R-READY-06",
-            "Sem check-in subjetivo o treino forte não é liberado",
+            "Sem o check-in de hoje, o treino forte não é liberado",
         ),
-        "R-LOAD-03" to RuleExplanation("R-LOAD-03", "Carga subindo rápido é alerta, não meta"),
+        "R-LOAD-03" to RuleExplanation(
+            "R-LOAD-03",
+            "Carga subindo rápido é um sinal de alerta, não uma meta de treino",
+        ),
         "R-LOAD-04" to RuleExplanation(
             "R-LOAD-04",
             "Carga estimada pelo esforço percebido: conserva, nunca libera aumento",
         ),
         "R-PLAN-02" to RuleExplanation("R-PLAN-02", "No máximo 2 treinos fortes por semana"),
-        "R-PLAN-03" to RuleExplanation("R-PLAN-03", "Longão é a sessão mais longa; piso 45/60 e alvo de 25–30%"),
+        "R-PLAN-03" to
+            RuleExplanation(
+                "R-PLAN-03",
+                "O longão é a sessão mais longa da semana; 45 a 60 min, mirando 25–30% do volume",
+            ),
         "R-PLAN-04" to RuleExplanation("R-PLAN-04", "Descarga a cada 4ª semana de carga demonstrada"),
         "R-PLAN-05" to RuleExplanation("R-PLAN-05", "Redução de volume antes da prova"),
         "R-PLAN-06" to RuleExplanation("R-PLAN-06", "80% do tempo em ritmo fácil"),
@@ -38,7 +45,7 @@ object ExplanationCatalog {
         "R-CAL-02" to RuleExplanation("R-CAL-02", "Sem calibração, prescrever pelo esforço percebido"),
         "R-CAL-01" to RuleExplanation(
             "R-CAL-01",
-            "Prova ou teste recente define VDOT e LTHR",
+            "Prova ou teste recente define seu índice de aptidão e sua FC no limite",
         ),
         "R-ACT-01" to RuleExplanation(
             "R-ACT-01",
@@ -51,9 +58,12 @@ object ExplanationCatalog {
         "R-SAFE-01" to RuleExplanation("R-SAFE-01", "Sinal de alerta interrompe o treino"),
         "R-PLAN-01" to RuleExplanation(
             "R-PLAN-01",
-            "Volume cresce no máximo 6% e só com semana concluída e guardrails verdes",
+            "O volume cresce no máximo 6%, e só depois de uma semana cumprida com todas as travas liberadas",
         ),
-        "R-PLAN-09" to RuleExplanation("R-PLAN-09", "Mudança de perfil gera revisão sugerida, nunca automática"),
+        "R-PLAN-09" to RuleExplanation(
+            "R-PLAN-09",
+            "Mudar o perfil gera uma revisão sugerida — nunca aplicada sozinha",
+        ),
         "R-PLAN-10" to RuleExplanation(
             "R-PLAN-10",
             "Sem treino forte na semana da prova e corte conservador antes dela",
@@ -64,7 +74,7 @@ object ExplanationCatalog {
         ),
         "R-PRESC-01" to RuleExplanation("R-PRESC-01", "A prescrição do dia mantém o plano"),
         "R-PRESC-02" to RuleExplanation("R-PRESC-02", "Ajuste do dia reduz, nunca aumenta"),
-        "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Uma decisão por dia, a mesma em todas as telas"),
+        "R-PRESC-03" to RuleExplanation("R-PRESC-03", "Cada dia tem uma decisão só, igual em todas as telas"),
         "R-PRESC-04" to RuleExplanation("R-PRESC-04", "Iniciante não recebe treino forte no dia"),
         "R-RACE-01" to RuleExplanation(
             "R-RACE-01",
@@ -76,7 +86,7 @@ object ExplanationCatalog {
         ),
         "R-RACE-03" to RuleExplanation(
             "R-RACE-03",
-            "Previsão de tempo por VDOT, com faixa e checagem de Riegel",
+            "Previsão de tempo a partir da sua forma recente, com faixa de segurança",
         ),
         "R-RACE-04" to RuleExplanation(
             "R-RACE-04",
@@ -84,11 +94,11 @@ object ExplanationCatalog {
         ),
         "R-LVL-01" to RuleExplanation(
             "R-LVL-01",
-            "Graduação para intermediário por consistência demonstrada, com aceite",
+            "Você já tem consistência para subir para intermediário. Você aceita?",
         ),
         "R-LVL-02" to RuleExplanation(
             "R-LVL-02",
-            "Graduação para avançado por carga estável e prova, com aceite",
+            "Você já tem carga estável e prova para subir para avançado. Você aceita?",
         ),
         "R-PER-01" to RuleExplanation(
             "R-PER-01",
@@ -100,15 +110,15 @@ object ExplanationCatalog {
         ),
         "R-PER-03" to RuleExplanation(
             "R-PER-03",
-            "Oportunidade de qualidade: o plano propõe e o dia confirma",
+            "Oportunidade de treino forte: a semana propõe e o dia confirma",
         ),
         "R-PER-04" to RuleExplanation(
             "R-PER-04",
-            "Catálogo de qualidade por fase, nível e distância, com PEAK específico",
+            "Escolha do estímulo por etapa do treino, nível e distância da prova",
         ),
         "R-COLD-01" to RuleExplanation(
             "R-COLD-01",
-            "Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão",
+            "Entrada: com prova recente, o app libera 1 treino forte curto, sem aumentar o volume",
         ),
         "R-FEEDBACK-01" to RuleExplanation(
             "R-FEEDBACK-01",
@@ -116,7 +126,7 @@ object ExplanationCatalog {
         ),
         "R-REVIEW-01" to RuleExplanation(
             "R-REVIEW-01",
-            "A semana é lida como fato, com dado ausente como ausente",
+            "A semana é um retrato do que aconteceu; o que falta de dado aparece como falta",
         ),
     )
 
@@ -153,12 +163,12 @@ object ExplanationCatalog {
         ),
         "EV-IMPELLIZZERI-2020" to EvidenceExplanation(
             "EV-IMPELLIZZERI-2020",
-            "Limitações do ACWR",
+            "Limites da carga recente",
             "Impellizzeri et al., Sports Med 2020",
         ),
         "EV-FOSTER-2001" to EvidenceExplanation(
             "EV-FOSTER-2001",
-            "Carga pelo esforço percebido (sRPE)",
+            "Carga pelo esforço percebido",
             "Foster et al., JSCR 2001",
         ),
         "EV-ELY-2007" to EvidenceExplanation(

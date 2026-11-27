@@ -15,25 +15,6 @@ core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEng
 core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | mesociclo / bloco | … forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a partir de … | F4
 core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | pace | … treino forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a … | F4
 core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [racePaceSteps step1] | pace | Faça 5 × 4 min no pace atual de 5K, com 2 min leves de recuperação. | F4
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [evidence EV-FOSTER-2001 title] | sRPE | Carga pelo esforço percebido (sRPE) | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [evidence EV-IMPELLIZZERI-2020 title] | ACWR | Limitações do ACWR | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-CAL-01 title] | LTHR | Prova ou teste recente define VDOT e LTHR | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-CAL-01 title] | VDOT | Prova ou teste recente define VDOT e LTHR | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-COLD-01 title] | qualidade | Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-03 title] | qualidade | Oportunidade de qualidade: o plano propõe e o dia confirma | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-04 title] | PEAK / BUILD / TAPER / BASE / RECOVERY | Catálogo de qualidade por fase, nível e distância, com PEAK específico | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-04 title] | qualidade | Catálogo de qualidade por fase, nível e distância, com PEAK específico | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PLAN-01 title] | guardrails | Volume cresce no máximo 6% e só com semana concluída e guardrails verdes | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-RACE-03 title] | Riegel | Previsão de tempo por VDOT, com faixa e checagem de Riegel | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-RACE-03 title] | VDOT | Previsão de tempo por VDOT, com faixa e checagem de Riegel | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [acwrHigh detail] | ACWR | ACWR 1,60 > 1,50 | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [acwrHigh unlockHint] | ACWR | Mantenha a carga estável até o ACWR voltar a 1,50 ou menos. | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [coldStart detail] | VDOT | rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [coldStart detail] | qualidade | rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [monotonyHigh detail] | monotonia / monótona | monotonia 2,10 ≥ 2,00 | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [monotonyUnknown detail] | monotonia / monótona | monotonia sem dados suficientes | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [raceWeek detail] | qualidade | semana de prova: sem qualidade principal | F3
-core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [strainSpike detail] | strain | strain semanal acima de 2× a média crônica | F3
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | pace | … revisão atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
 core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedSlow note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … (30:59), ainda dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5

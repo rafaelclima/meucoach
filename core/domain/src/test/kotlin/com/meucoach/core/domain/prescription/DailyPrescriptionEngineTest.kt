@@ -520,10 +520,10 @@ class DailyPrescriptionEngineTest {
 
         assertThat(prescription.adjustment).isEqualTo(PrescriptionAdjustment.DOWNGRADE)
         assertThat(prescription.prescribedType).isEqualTo(WorkoutType.EASY)
-        assertThat(prescription.rationale).contains("ACWR").contains("1,60").contains("1,50")
+        assertThat(prescription.rationale).contains("carga dos últimos 7 dias").contains("1,60").contains("1,50")
         assertThat(prescription.ruleIds).contains("R-LOAD-03")
         assertThat(prescription.qualityBlockReason).isEqualTo(QualityBlockReason.ACWR_HIGH)
-        assertThat(prescription.decisionDetail).contains("ACWR 1,60 > 1,50")
+        assertThat(prescription.decisionDetail).contains("carga dos últimos 7 dias 1,60×, acima de 1,50×")
     }
 
     @Test
@@ -922,10 +922,10 @@ class DailyPrescriptionEngineTest {
     }
 
     @Test
-    fun `daily engine version is daily-prescription-v7`() {
+    fun `daily engine version is daily-prescription-v8`() {
         // C4-53/ADR 0048 §2.4: a new day contract; the stored v5 is superseded
         // by GetTodayPrescription, never overwritten.
-        assertThat(PrescriptionPolicy.ENGINE_VERSION).isEqualTo("daily-prescription-v7")
+        assertThat(PrescriptionPolicy.ENGINE_VERSION).isEqualTo("daily-prescription-v8")
     }
 
     @Test

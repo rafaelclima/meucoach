@@ -1,6 +1,81 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F2: rationale do plano semanal em fala de corredor, `weekly-plan-v10`, baseline de 66 + 39 violações)
+**Atualizado:** 27/11/2026 (Ciclo 5, F3: gate de qualidade e catálogo de regras em fala de corredor, `daily-prescription-v8`, baseline de 47 + 39 violações)
+
+## Sessão 2026-11-27 — Ciclo 5, F3: gate de qualidade e catálogo de regras
+
+**Objetivo:** corrigir `detail`/`unlockHint` do `QualityGate` e títulos de
+regra/evidência do `ExplanationCatalog` conforme as linhas F3 da auditoria
+(`docs/AUDITORIA_UX_WRITING_2026-11.md`), sem mudar nenhuma regra fisiológica,
+limiar, volume, alvo, critério de qualidade ou `ruleId`/`evidenceId`; schema
+Room v23 intacto. `Longão`, `dose pequena` e títulos de sessão mantidos
+(decisões 21/11/2026 e 27/11/2026); `WeeklyPlanGenerator` (F2 pronta),
+`SessionLibrary`, `SessionBriefingEngine`, `WorkoutStructure`, `RacePace`,
+`StoryVerdict` e UI ficam para F4–F7.
+
+### Concluído
+
+- **Motor (`QualityGate`, `daily-prescription-v7` → `v8`):** `ACWR …` →
+  carga dos últimos 7 dias com `×` e faixa; `strain` → carga desta semana
+  mais que o dobro da base; `monotonia … ≥ …` → semana muito repetitiva
+  (variedade …) e `monotonia sem dados` → variedade sem dados para avaliar;
+  `rampa de entrada … com VDOT, 1 qualidade curta` → primeira semana depois
+  da prova com 1 treino forte curto, sem aumentar o volume; `prontidão
+  vermelha/moderada (score N)` → `prontidão baixa/moderada (N/100)` (rótulo
+  do `ReadinessLevel`, sem "vermelha"); `nível iniciante: … graduação` → `…
+  vem depois de você subir de nível`; `check-in subjetivo …` → `você ainda
+  não respondeu o check-in de hoje`; `semana de prova: sem qualidade
+  principal` → `… sem o treino forte principal`; `… apenas a dose pequena
+  estrutural` → `… só a dose pequena de sempre`; `carga objetiva
+  insuficiente: N de 28 dias` → `faltam dados de carga: N de 28 dias com FC
+  ou ritmo`. `unlockHint` do ACWR sem a sigla. Demais `unlockHint` (15 em 2ª
+  pessoa, verbo de ação) mantidos conforme a linha [OK] da auditoria.
+- **Catálogo (`ExplanationCatalog`, sem bump — ver abaixo):** 14 títulos de
+  regra na sugestão da auditoria (`VDOT`/`LTHR` → índice de aptidão/FC no
+  limite; `Riegel` → forma recente; `PEAK`/`qualidade` → estímulo/etapa do
+  treino; `Longão … piso 45/60` → faixa 45 a 60 min mirando 25–30%; `guardrails
+  verdes` → travas liberadas; `qualidade` → treino forte; `rampa de entrada`
+  → entrada com 1 treino forte curto) + 2 títulos de evidência com sigla
+  (`(sRPE)` removido; `Limitações do ACWR` → `Limites da carga recente`),
+  ambos baselinados como F3 e agrupados na linha [OK] da auditoria.
+  `Tier A/B` verificado ausente nos dois arquivos (nada a corrigir).
+- **Goldens do dia:** `sleep-nights` e `readiness-checkin` regravados para o
+  texto novo (`prontidão moderada (N/100)`, check-in em 2ª pessoa).
+- **Testes:** `QualityGateTest` (baixa/FC ou ritmo/dobro),
+  `DailyPrescriptionEngineTest` (carga dos últimos 7 dias, `decisionDetail`
+  novo, versão `v8`), goldens do dia e `GetTodayPrescriptionTest`
+  (versão `v8` + `muito repetitiva`).
+- **Baseline:** 19 linhas F3 removidas no mesmo commit (só encolhe):
+  11 do `ExplanationCatalog` (9 de regra + 2 de evidência) e 8 do
+  `QualityGate` (inclui `coldStart` com 2 termos na mesma string). Restam
+  47 no domínio + 39 na UI.
+
+### Gates
+
+- `./gradlew :core:domain:test` verde (incluindo goldens do dia e gate de
+  vocabulário, sem violações novas nem obsoletas).
+- `./gradlew spotlessApply` + `./gradlew check` verdes (detekt, Kover,
+  `spotlessCheck`, lint); nenhum dado real no diff; sem dependência nova.
+
+### Por que só o `daily-prescription` bumpou (ADR 0071 §2.7)
+
+- `detail`/`unlockHint` do `QualityGate` são persistidos (`decisionDetail`/
+  `unlockHint` em `daily_prescriptions`) — texto novo exige `engineVersion`
+  novo (`daily-prescription-v8`); o histórico mantém o texto antigo, sem
+  migração.
+- Títulos do `ExplanationCatalog` **não** são persistidos (só `ruleId`/
+  `evidenceId` vão para o banco; o título é resolvido na leitura) — mudar o
+  rótulo não muda a decisão nem o dado guardado, então nenhum bump por essa
+  parte.
+
+### Pendente (F4–F9, fora desta fatia)
+
+- F4 títulos/briefing (`SessionLibrary`, `SessionBriefingEngine`,
+  `WorkoutStructure`, inclui `Rampa de entrada` residual no
+  `DailyPrescriptionEngine.keptQuality`, fora do escopo desta fatia e não
+  coberto pelo gate) → F5 prova/level/story → F6 Coach → F7 demais telas →
+  F8 bugs literais → F9 fechar o gate. Cada linha do baseline aponta a fatia
+  que a remove.
 
 ## Sessão 2026-11-27 — Ciclo 5, F2: rationale do plano semanal
 

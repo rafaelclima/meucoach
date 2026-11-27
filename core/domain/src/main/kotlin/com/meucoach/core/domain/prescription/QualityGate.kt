@@ -94,7 +94,7 @@ object QualityGate {
             detail = if (illness) {
                 "sinal de doença ou lesão no check-in"
             } else {
-                "prontidão vermelha (score ${readiness.score})"
+                "prontidão baixa (${readiness.score}/100)"
             },
             ruleId = if (illness) "R-SAFE-01" else "R-READY-03",
             evidenceIds = listOf("EV-SAW-2016"),
@@ -110,7 +110,7 @@ object QualityGate {
         if (context.profile.experience != Experience.BEGINNER) return null
         return blocked(
             reason = QualityBlockReason.BEGINNER_GUARD,
-            detail = "nível iniciante: o treino forte fica para depois da graduação",
+            detail = "nível iniciante: o treino forte vem depois de você subir de nível",
             ruleId = "R-PRESC-04",
             evidenceIds = listOf("EV-DANIELS-2014", "EV-SEILER-2010"),
             unlockHint = "Conclua a graduação para liberar treino forte.",
@@ -121,7 +121,7 @@ object QualityGate {
         if (ReadinessComponent.SUBJECTIVE in context.readiness.components) return null
         return blocked(
             reason = QualityBlockReason.SUBJECTIVE_MISSING,
-            detail = "check-in subjetivo de hoje ainda não foi respondido",
+            detail = "você ainda não respondeu o check-in de hoje",
             ruleId = "R-READY-06",
             evidenceIds = listOf("EV-SAW-2016"),
             unlockHint = "Faça o check-in de hoje para liberar o treino forte.",
@@ -147,7 +147,7 @@ object QualityGate {
         if (context.readiness.level == ReadinessLevel.GREEN) return null
         return blocked(
             reason = QualityBlockReason.LOW_READINESS,
-            detail = "prontidão moderada (score ${context.readiness.score})",
+            detail = "prontidão moderada (${context.readiness.score}/100)",
             ruleId = "R-READY-03",
             evidenceIds = listOf("EV-SAW-2016"),
             unlockHint = "Recupere até a prontidão ficar verde e confirme no check-in.",
@@ -170,7 +170,7 @@ object QualityGate {
         if (context.microDose || !context.plan.raceWeek) return null
         return blocked(
             reason = QualityBlockReason.RACE_WEEK,
-            detail = "semana de prova: sem qualidade principal",
+            detail = "semana de prova: sem o treino forte principal",
             ruleId = "R-PLAN-10",
             evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
             unlockHint = "Semana de prova: a dose pequena já é o estímulo; o treino forte volta depois.",
@@ -192,7 +192,7 @@ object QualityGate {
         if (context.microDose || context.plan.phase != MesoPhase.TAPER) return null
         return blocked(
             reason = QualityBlockReason.TAPER_WINDOW,
-            detail = "semana de prova: apenas a dose pequena estrutural",
+            detail = "semana de prova: só a dose pequena de sempre",
             ruleId = "R-PLAN-05",
             evidenceIds = listOf("EV-BOSQUET-2007", "EV-MUJIKA-2003"),
             unlockHint = "Mantenha a dose pequena e guarde o treino forte para depois da prova.",
@@ -229,7 +229,7 @@ object QualityGate {
             } else {
                 blocked(
                     reason = QualityBlockReason.LOAD_INSUFFICIENT,
-                    detail = "carga objetiva insuficiente: ${load.objectiveDaysWithLoad} de 28 dias",
+                    detail = "faltam dados de carga: ${load.objectiveDaysWithLoad} de 28 dias com FC ou ritmo",
                     ruleId = "R-DATA-01",
                     evidenceIds = listOf("EV-IMPELLIZZERI-2020"),
                     unlockHint = UNLOCK_LOAD,
@@ -257,8 +257,8 @@ object QualityGate {
         if (load.monotonyOk) return null
         return blocked(
             reason = QualityBlockReason.MONOTONY_HIGH,
-            detail = load.monotony?.let { "monotonia ${decimal(it)} ≥ ${decimal(LoadSnapshot.MONOTONY_MAX)}" }
-                ?: "monotonia sem dados suficientes",
+            detail = load.monotony?.let { "semana muito repetitiva (variedade ${decimal(it)})" }
+                ?: "variedade sem dados suficientes para avaliar",
             ruleId = "R-LOAD-03",
             evidenceIds = listOf("EV-FOSTER-2001"),
             unlockHint = "Varie a carga: dias leves de verdade e um estímulo principal.",
@@ -269,7 +269,7 @@ object QualityGate {
         if (!load.strainReliable || !load.strainSpike) return null
         return blocked(
             reason = QualityBlockReason.STRAIN_SPIKE,
-            detail = "strain semanal acima de 2× a média crônica",
+            detail = "carga desta semana mais que o dobro da sua base",
             ruleId = "R-LOAD-03",
             evidenceIds = listOf("EV-FOSTER-2001"),
             unlockHint = "Reduza a concentração de carga desta semana.",
@@ -281,10 +281,10 @@ object QualityGate {
         if (!load.acwrReliable || acwr <= LoadSnapshot.ACWR_MAX) return null
         return blocked(
             reason = QualityBlockReason.ACWR_HIGH,
-            detail = "ACWR ${decimal(acwr)} > ${decimal(LoadSnapshot.ACWR_MAX)}",
+            detail = "carga dos últimos 7 dias ${decimal(acwr)}×, acima de ${decimal(LoadSnapshot.ACWR_MAX)}×",
             ruleId = "R-LOAD-03",
             evidenceIds = listOf("EV-GABBETT-2016"),
-            unlockHint = "Mantenha a carga estável até o ACWR voltar a 1,50 ou menos.",
+            unlockHint = "Mantenha a carga estável até voltar a 1,50× ou menos.",
         )
     }
 
@@ -300,7 +300,7 @@ object QualityGate {
     private fun coldStartEligible() = QualityEligibility(
         eligible = true,
         reason = null,
-        detail = "rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão",
+        detail = "primeira semana depois da prova: 1 treino forte curto, sem aumentar o volume",
         ruleId = RULE_COLD_START,
         evidenceIds = ELIGIBLE_EVIDENCE,
         unlockHint = null,

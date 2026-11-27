@@ -41,7 +41,7 @@
         "eligible": false,
         "reason": "LOW_READINESS",
         "ruleId": "R-READY-03",
-        "detail": "prontidão moderada (score 60)",
+        "detail": "prontidão moderada (60/100)",
         "unlockHint": "Recupere até a prontidão ficar verde e confirme no check-in."
       }
     },

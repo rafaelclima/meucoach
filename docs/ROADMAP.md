@@ -876,7 +876,7 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
 **Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
-F2–F9 pendentes.
+F2–F3 concluídas; F4–F9 pendentes.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -905,8 +905,12 @@ desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
   “mesociclo”, “Qualidade planejada/movida” e “micro-dose” em fala de
   corredor. `ENGINE_VERSION` `v10`; goldens de plano regravados;
   `forbiddenTitles` por cenário preservados; `Longão` inalterado.
-- [ ] **F3 · Motor — gate de qualidade e catálogo de regras.** `QualityGate`
-  (`detail`), `ExplanationCatalog` (títulos de regra e evidência).
+- [x] **F3 · Motor — gate de qualidade e catálogo de regras.** `QualityGate`
+  (`detail`/`unlockHint` em fala de corredor: carga dos últimos 7 dias,
+  variedade, carga concentrada, índice de aptidão/FC no limite, treino forte)
+  e `ExplanationCatalog` (16 títulos de regra + 2 de evidência).
+  `daily-prescription-v8`; goldens do dia regravados; 19 linhas do baseline
+  removidas; `Longão`/`dose pequena` inalterados.
 - [ ] **F4 · Motor — títulos, blurps, briefing e estrutura.** `SessionLibrary`,
   `SessionBriefingEngine`, `WorkoutStructure`, zona no briefing.
 - [ ] **F5 · Motor — prova, level e story.** `RacePace`, `LevelGraduationEngine`,
