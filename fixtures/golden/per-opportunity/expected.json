@@ -21,5 +21,36 @@
     "durationMin": 40,
     "planDecision": "LONG_DAY_TOO_SHORT"
   },
-  "forbiddenTitles": ["Longão"]
+  "forbiddenTitles": ["Longão"],
+  "forbiddenVocabulary": [
+    "ACWR",
+    "CTL / ATL / TSB",
+    "TRIMP / rTSS",
+    "sRPE",
+    "LTHR",
+    "VDOT",
+    "Tier A / Tier B / Tier C",
+    "monotonia / monótona",
+    "strain",
+    "guardrails",
+    "Strides / strides",
+    "Colinas",
+    "Fácil",
+    "taper",
+    "deload",
+    "mesociclo / bloco",
+    "qualidade",
+    "pace",
+    "splits",
+    "micro-dose",
+    "blob / tiles",
+    "analytics",
+    "especificidade",
+    "performance",
+    "Riegel",
+    "TT",
+    "PEAK / BUILD / TAPER / BASE / RECOVERY",
+    "R- / EV-",
+    "motor"
+  ]
 }

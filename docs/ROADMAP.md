@@ -875,8 +875,8 @@ Itens levantados na verificação visual de 03/11/2026. Não bloqueiam o MVP e f
 
 ### Ciclo 5 — Conteúdo: vocabulário, voz e texto do motor (ADR 0071)
 
-**Status:** decisão tomada em 27/11/2026; implementação em fatias a partir de
-28/11/2026.
+**Status:** decisão tomada em 27/11/2026; F1 (gate) concluída em 27/11/2026,
+F2–F9 pendentes.
 
 A auditoria completa de UX Writing (`docs/AUDITORIA_UX_WRITING_2026-11.md`)
 encontrou 39 linhas críticas e 80 de melhoria em todo texto visível. O jargão não
@@ -890,13 +890,15 @@ foram aprovados pelo usuário 0 em 21/11/2026 e ficam (`DECISIONS.md`
 §Decisões de produto). O registro coloquial do Coach **também** fica: a gíria é
 desejada, e o produto inteiro fala do mesmo jeito, sem camada de tradução.
 
-- [ ] **F1 · Gate automatizado.** Ampliar `forbiddenTitles`/`forbiddenRationale`
-  nos goldens (hoje o gate só cobre o cenário `noRace` e não pega “Fase BASE.”)
-  e criar os testes de catálogo (`ExplanationCatalog`, `QualityGate`,
-  `SessionLibrary`, `SessionBriefingEngine`, `StoryVerdictCalculator`,
-  `RacePace`) e de UI (`strings.xml`, `ReadinessLabels`, `CoachNextLabels`,
+- [x] **F1 · Gate automatizado.** `forbiddenVocabulary` em 5 goldens de plano
+  (`per-horizon` verificado em todos os blocos — general/peak/conservative/
+  noRace —, não só `noRace`) e testes de catálogo (`ExplanationCatalog`,
+  `QualityGate`, `SessionLibrary`, `SessionBriefingEngine`,
+  `StoryVerdictCalculator`, `RacePace`, `WorkoutRecommender`) e de UI
+  (`strings.xml`, `ReadinessLabels`, `ProfileLabels`, `CoachNextLabels`,
   `RacePredictionBlock`, `WeeklyReviewFormat`, labels do Coach), com baseline
-  explícito dos violadores conhecidos.
+  explícito de 91 + 39 violações. Prova: remover uma linha do baseline quebra
+  o teste com a origem, o termo e o trecho.
 - [ ] **F2 · Motor — rationale do plano semanal.** `WeeklyPlanGenerator`: enum de
   fase, “taper”, “ACWR”, “monotonia”, “strides”, “bloco”, “mesociclo”.
   Atualizar `ENGINE_VERSION` e os goldens de título.

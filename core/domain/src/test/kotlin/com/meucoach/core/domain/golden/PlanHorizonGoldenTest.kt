@@ -157,6 +157,28 @@ class PlanHorizonGoldenTest {
         assertThat(plan.sessions).noneMatch { it.qualityKind == QualityKind.RACE_PACE }
     }
 
+    @Test
+    fun `forbidden vocabulary stays out of every horizon block`() {
+        val input = readGolden("/golden/per-horizon/input.json")
+        val expected = readGolden("/golden/per-horizon/expected.json")
+
+        val general = generator.generate(input.toWeeklyInput())
+        val peakExpected = expected.getJSONObject("peak")
+        val peakInput = input.toWeeklyInput(today = LocalDate.parse(peakExpected.getString("today")))
+            .let { it.copy(profile = it.profile.withFreshCalibration(input)) }
+        val peak = generator.generate(peakInput)
+        val conservative = generator.generate(
+            peakInput.copy(raceTargetTimeSec = expected.getInt("conservativeGoalSec")),
+        )
+        val noRace = generator.generate(input.toWeeklyInput().copy(race = null, raceTargetTimeSec = null))
+
+        assertGoldenVocabulary(
+            expected,
+            listOf("general" to general, "peak" to peak, "conservative" to conservative, "noRace" to noRace),
+            "fixtures/golden/per-horizon/expected.json",
+        )
+    }
+
     private fun assertSessions(plan: WeeklyPlan, sessionsExpected: org.json.JSONArray) {
         repeat(sessionsExpected.length()) { index ->
             val sessionExpected = sessionsExpected.getJSONObject(index)

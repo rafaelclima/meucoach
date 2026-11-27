@@ -225,4 +225,14 @@ object ExplanationCatalog {
     fun hasRule(id: String): Boolean = id in rules
 
     fun hasEvidence(id: String): Boolean = id in evidence
+
+    /**
+     * Every catalogued rule for the vocabulary gate (ADR 0071 F1).
+     * Additive and internal: same-module tests enumerate the titles the
+     * goldens never reach. No text changes here.
+     */
+    internal fun allRules(): List<RuleExplanation> = rules.values.toList()
+
+    /** Every catalogued evidence for the vocabulary gate (ADR 0071 F1). */
+    internal fun allEvidence(): List<EvidenceExplanation> = evidence.values.toList()
 }

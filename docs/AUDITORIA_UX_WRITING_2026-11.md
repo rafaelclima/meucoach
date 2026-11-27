@@ -17,22 +17,29 @@ tom de voz e concisão para mobile.
 > `[M]` melhoria (mais fluido, mais humano) · `[OK]` já está no padrão e não deve
 > ser tocado.
 
-**Resumo:** 39 linhas críticas, 80 de melhoria e 31 listadas como já no padrão.
+**Resumo:** 42 linhas críticas, 80 de melhoria e 31 listadas como já no padrão.
 As linhas são **grupadas por arquivo** — uma linha pode cobrir vários
-arquivos/linhas do mesmo defeito.
+arquivos/linhas do mesmo defeito. Três linhas críticas vieram do gate da
+F1 (duas em F4, uma em F6) e estão marcadas como achado do gate.
 **Nenhum arquivo de código foi alterado nesta auditoria.**
 
 ---
 
 ## Fatia F1 — Gate automatizado (sem texto)
 
-| Item | Onde | Observação |
-|---|---|---|
-| Ampliar o gate de goldens | `fixtures/golden/per-horizon/expected.json:92-95` | Hoje `forbiddenRationale: ["Fase PEAK", "Fase TAPER"]` só é aplicado ao cenário `noRace` (`PlanHorizonGoldenTest.kt:154-155`), onde a fase é `BASE`/`BUILD` — **o vazamento real (“Fase BASE.”) passa**. |
-| Declarar `forbiddenVocabulary` nos goldens | `fixtures/golden/*/expected.json` | Checar contra `plan.rationale`, `session.title` e `session.blurb`. |
-| Novo teste de catálogo | `core/domain/src/test/.../` | `ExplanationCatalog` (títulos de regra/evidência), `QualityGate` (`detail`/`unlockHint`), `SessionLibrary`, `SessionBriefingEngine`, `StoryVerdictCalculator`, `RacePace`. |
-| Novo teste de UI | `app/src/test/.../` | `strings.xml`, `ReadinessLabels`, `ProfileLabels`, `CoachNextLabels`, `RacePredictionBlock`, `WeeklyReviewFormat`, labels do Coach. |
-| Baseline explícito | `config/detekt/baseline.xml` (padrão) | Só encolhe; nunca cresce. |
+| Item | Onde | Observação | Status |
+|---|---|---|---|
+| Ampliar o gate de goldens | `fixtures/golden/per-horizon/expected.json:92-95` | Hoje `forbiddenRationale: ["Fase PEAK", "Fase TAPER"]` só é aplicado ao cenário `noRace` (`PlanHorizonGoldenTest.kt:154-155`), onde a fase é `BASE`/`BUILD` — **o vazamento real (“Fase BASE.”) passa**. | verificado |
+| Declarar `forbiddenVocabulary` nos goldens | `fixtures/golden/*/expected.json` | Checar contra `plan.rationale`, `session.title` e `session.blurb`. | verificado |
+| Novo teste de catálogo | `core/domain/src/test/.../` | `ExplanationCatalog` (títulos de regra/evidência), `QualityGate` (`detail`/`unlockHint`), `SessionLibrary`, `SessionBriefingEngine`, `StoryVerdictCalculator`, `RacePace`. | verificado |
+| Novo teste de UI | `app/src/test/.../` | `strings.xml`, `ReadinessLabels`, `ProfileLabels`, `CoachNextLabels`, `RacePredictionBlock`, `WeeklyReviewFormat`, labels do Coach. | verificado |
+| Baseline explícito | `core/domain/src/test/resources/content-vocabulary-baseline.txt` (91 linhas), `app/src/test/resources/content-vocabulary-baseline.txt` (39 linhas) | Só encolhe; nunca cresce. Inclui “motor” (§2.4) na mesma fonte única. | verificado |
+
+> **F1 concluída em 27/11/2026:** o gate achou 91 violações no domínio
+> (incluindo todos os blocos dos 5 goldens de plano) e 39 na UI, todas
+> baselinadas por fatia (F2: 32, F3: 19, F4: 18+2 novas, F5: 22, F6: 32+1
+> nova, F7: 7). Três violações não estavam na lista original e ganharam linha
+> própria em F4 (×2) e F6 (×1). Nenhum texto de usuário mudou.
 
 ---
 
@@ -120,6 +127,8 @@ arquivos/linhas do mesmo defeito.
 | [M] | `SessionLibrary.kt:387`, `:413`, `:527`, `:309`, `:338`, `:441`, `:470` | `target = "T"`, `"I"`, `"RPE 7"`, `"RPE 8"` | garantir que nenhum caminho de UI renderize o código cru (hoje só `steps()` traduz) | pendente |
 | [M] | `WorkoutStructure.kt:218-221` | `"pace atual de 5K"` etc. | `"ritmo atual de 5 km"` etc. | pendente |
 | [M] | `SessionBriefingSheet.kt:270`, `:272`, `:277` | `"Principal: FC e esforço; o pace é referência."` | `"Principal: FC e esforço; o ritmo é referência."` | pendente |
+| [C] | `WorkoutRecommender.kt:145` | `"Faça o check-in para confirmar a qualidade de hoje."` (achado do gate F1; não estava na lista) | `"Faça o check-in para confirmar o treino forte de hoje."` | pendente |
+| [C] | `fixtures/golden/plan-upgrade/input.json:18,25,33` (títulos preservados em `expected.json`) | `"Fácil de segunda"`, `"Fácil de terça"`, `"Fácil de hoje"` (achado do gate F1; título legado preservado pelo `PlanUpgrade`) | `"Rodagem ..."` pela regra de retitulação da F4, ou regenerar o fixture | pendente |
 | [OK] | `WorkoutStructure.kt:172`, `:176`, `:180`, `:191`, `:198`, `:200`, `:203`, `:215` | passo a passo do treino | manter | — |
 | [OK] | `SessionBriefingEngine.kt:47`, `:51`, `:59`, `:63`, `:81`, `:83`, `:107`, `:109`, `:114`, `:123`, `:125`, `:129-134` | orientação e sinais de alerta | manter | — |
 
@@ -176,6 +185,7 @@ arquivos/linhas do mesmo defeito.
 | [M] | `CoachNextLabels.kt:138`, `:141`, `:142`, `:143`, `:145`, `:146`, `:147` | `"A qualidade volta..."` | `"O treino forte volta..."` | pendente |
 | [M] | `CoachNextLabels.kt:145` | `"...quando a base de carga fechar a calibração."` | `"...quando você tiver mais semanas com carga registrada."` | pendente |
 | [M] | `CoachNextLabels.kt:107` | `"Prontidão $level · N/100"` | `"Prontidão alta · N/100 — sono curto."` | pendente |
+| [C] | `CoachNextLabels.kt:158` | `"Fácil conservador."` (achado do gate F1; `Fácil` como nome de sessão, `trainingLine` com `NO_PLAN`) | `"Leve conservador."` | pendente |
 | [M] | `CoachProgressLabels.kt:71` | `"Sem VDOT recente — correndo por RPE."` | `"Sem índice de aptidão recente — você corre pelo esforço percebido."` | pendente |
 | [M] | `CoachProgressLabels.kt:82` | `"VDOT $value ($origin em $data)."` | `"Índice de aptidão $value ($origin em $data)."` | pendente |
 | [M] | `CoachProgressLabels.kt:42` | `"$easy% fácil nos últimos 28 dias (alvo ~80%)."` | `"$easy% fácil nos últimos 28 dias. O ideal é 80%."` | pendente |

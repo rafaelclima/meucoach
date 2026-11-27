@@ -347,6 +347,10 @@ estava certo mas aparecia em três versões (`Longão` × `Corrida mais longa` �
 - `docs/GLOSSARY.md` vira catálogo canônico e passa a ser conferido em review
   de copy.
 - O gate automatizado passa a ser obrigatório no `check`.
+- Refinamento de F1 (sem mudar a decisão): o gate cobre a lista negra da
+  §2.1 **mais** “motor” (§2.4, decisão do usuário 0 §2.10) na mesma fonte
+  única, porque todo “motor em tela” da auditoria também é frase sem sujeito;
+  o baseline fixa `motor` como termo de voz até a F6.
 
 ## 6. Plano de implementação (fatias)
 

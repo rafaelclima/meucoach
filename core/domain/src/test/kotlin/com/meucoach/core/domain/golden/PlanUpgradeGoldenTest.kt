@@ -62,6 +62,28 @@ class PlanUpgradeGoldenTest {
         assertThat(second).isInstanceOf(PlanUpgradeResult.Skipped::class.java)
     }
 
+    @Test
+    fun `forbidden vocabulary stays out of the upgraded week`() {
+        val input = readGolden("/golden/plan-upgrade/input.json")
+        val expected = readGolden("/golden/plan-upgrade/expected.json")
+
+        val today = LocalDate.parse(input.getString("today"))
+        val current = input.getJSONObject("stored").toPlan(input.getString("weekStart"))
+        val regenerated = input.getJSONObject("regenerated").toPlan(input.getString("weekStart"))
+        val result = PlanUpgrade.upgrade(
+            current,
+            regenerated,
+            today,
+            input.getString("targetVersion"),
+            Experience.INTERMEDIATE,
+        )
+
+        assertThat(result).isInstanceOf(PlanUpgradeResult.Upgraded::class.java)
+        val upgraded = (result as PlanUpgradeResult.Upgraded).plan
+
+        assertGoldenVocabulary(expected, listOf("upgraded" to upgraded), "fixtures/golden/plan-upgrade/expected.json")
+    }
+
     private fun JSONObject.toPlan(weekStart: String): WeeklyPlan {
         val sessions = getJSONArray("sessions")
         val parsed = List(sessions.length()) { index ->

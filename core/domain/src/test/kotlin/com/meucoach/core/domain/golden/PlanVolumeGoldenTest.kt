@@ -56,6 +56,16 @@ class PlanVolumeGoldenTest {
     }
 
     @Test
+    fun `forbidden vocabulary stays out of the volume week`() {
+        val input = readGolden("/golden/vol-02/input.json")
+        val expected = readGolden("/golden/vol-02/expected.json")
+
+        val plan = WeeklyPlanGenerator().generate(input.toWeeklyInput())
+
+        assertGoldenVocabulary(expected, listOf("plan" to plan), "fixtures/golden/vol-02/expected.json")
+    }
+
+    @Test
     fun `a legacy completion never inflates the real base`() {
         val monday = LocalDate.of(2026, 10, 26)
         val strong = listOf(

@@ -59,5 +59,36 @@
       "hasStructure": false
     }
   ],
-  "forbiddenTitles": ["Intervalado", "Fartlek", "Fartlek leve", "Subidas", "Pace de prova 5K", "Corrida mais longa"]
+  "forbiddenTitles": ["Intervalado", "Fartlek", "Fartlek leve", "Subidas", "Pace de prova 5K", "Corrida mais longa"],
+  "forbiddenVocabulary": [
+    "ACWR",
+    "CTL / ATL / TSB",
+    "TRIMP / rTSS",
+    "sRPE",
+    "LTHR",
+    "VDOT",
+    "Tier A / Tier B / Tier C",
+    "monotonia / monótona",
+    "strain",
+    "guardrails",
+    "Strides / strides",
+    "Colinas",
+    "Fácil",
+    "taper",
+    "deload",
+    "mesociclo / bloco",
+    "qualidade",
+    "pace",
+    "splits",
+    "micro-dose",
+    "blob / tiles",
+    "analytics",
+    "especificidade",
+    "performance",
+    "Riegel",
+    "TT",
+    "PEAK / BUILD / TAPER / BASE / RECOVERY",
+    "R- / EV-",
+    "motor"
+  ]
 }

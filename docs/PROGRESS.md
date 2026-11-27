@@ -1,6 +1,62 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (ADR 0071: vocabulário, voz e estados padronizados no texto de usuário)
+**Atualizado:** 27/11/2026 (Ciclo 5, F1: gate automatizado de vocabulário ativo com baseline de 91 + 39 violações)
+
+## Sessão 2026-11-27 — Ciclo 5, F1: gate automatizado de vocabulário
+
+**Objetivo:** construir o gate que trava o progresso das fatias F2–F8
+(ADR 0071 §2.8), sem corrigir nenhum texto de usuário. Nenhuma regra
+fisiológica, limiar, volume, alvo, critério de qualidade ou `ruleId`/
+`evidenceId` muda; schema Room v23 intacto.
+
+### Concluído
+
+- **Fonte única** (`core/domain/.../content/ForbiddenVocabulary.kt`, público):
+  28 termos da §2.1 em `TERMS`/`DISPLAYS` + “motor” (§2.4, decisão do usuário
+  0) com `findViolations`/`violates` e motivo (termo + trecho). Exceções
+  implementadas: “Pace de prova” liberado, “Fácil” só como nome de sessão
+  (zona `Fácil (Z2)` e adjetivo liberados), bloco de auditoria fora da
+  varredura, `dose pequena`/`Fartlek`/`Longão`/`Subidas`/`Intervalado`/
+  `Rodagem` nunca proibidos.
+- **Gate no domínio** (`ContentVocabularyTest` + `VocabularyGate` com baseline
+  em `core/domain/src/test/resources/content-vocabulary-baseline.txt`):
+  `ExplanationCatalog` (com acessores aditivos `allRules()`/`allEvidence()`),
+  `QualityGate`, `SessionLibrary`, `SessionBriefingEngine`, `StoryVerdictCalculator`,
+  `RacePaceResolver` e `WorkoutRecommender`. Tons inalcançáveis pelo
+  `calculate` (`QUALITY` forte demais, `LONG` leve demais, `REST`) são texto
+  morto corrigido na F5 — o gate cobre todo tom alcançável.
+- **Gate nos goldens corrigido:** `forbiddenVocabulary` (29 displays) nos 5
+  `expected.json` de plano; `PlanHorizonGoldenTest` agora verifica todos os
+  blocos (general/peak/conservative/noRace), não só `noRace`. `forbiddenTitles`
+  por cenário preservado.
+- **Gate na UI** (`ContentVocabularyUiTest` + `UiVocabularyGate`, Robolectric,
+  baseline em `app/src/test/resources/`): `strings.xml` (via `R.string`),
+  `ReadinessLabels`, `ProfileLabels`, `CoachNextLabels`, `RacePredictionBlock`
+  (renders por variante), `WeeklyReviewFormat` e labels do Coach.
+- **Baseline: 91 linhas no domínio + 39 na UI** (F2: 32, F3: 19, F4: 20,
+  F5: 22, F6: 33, F7: 7). O gate achou 3 violações fora da lista original,
+  que ganharam linha na auditoria: `WorkoutRecommender` “qualidade de hoje”
+  (F4), títulos legados “Fácil de …” preservados no `plan-upgrade` (F4) e
+  `CoachNextLabels` “Fácil conservador.” (F6).
+- **Prova do critério 3:** remover uma linha do baseline quebra o teste com
+  origem, termo e trecho; restaurada, o build volta ao verde.
+
+### Gates
+
+- `./gradlew check` verde (detekt `maxIssues: 0`, Kover `core:domain` e `:app`,
+  `spotlessCheck`, lint). `TodayViewModelPersistTest.upgrades a stale stored
+  week on opening` estourou 30 s uma vez na suíte cheia e passou isolado e no
+  rerun — flake de carga já documentado, sem relação com esta fatia.
+- `./gradlew :app:testDebugUnitTest --tests "com.meucoach.app.ui.content.*"`,
+  `:core:domain:test` (content + goldens de plano) e `spotlessApply` verdes;
+  nenhum dado real no diff; sem dependência nova.
+
+### Pendente (F2–F9, fora desta fatia)
+
+- F2 rationale do plano → F3 gate/catálogo → F4 títulos/briefing →
+  F5 prova/level/story → F6 Coach → F7 demais telas → F8 bugs literais →
+  F9 fechar o gate (remover baselines). Cada linha do baseline aponta a fatia
+  que a remove.
 
 ## Sessão 2026-11-27 — ADR 0071: vocabulário, voz e texto do motor
 

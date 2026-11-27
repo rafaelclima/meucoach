@@ -1,0 +1,101 @@
+# Content vocabulary baseline (ADR 0071 F1).
+# One known violation per line: `origin | term | excerpt | fatia`.
+# - `origin` is the repo-relative path plus the producing context;
+#   `fixtures/golden/` origins come from the plan golden tests.
+# - `term` is a display from ForbiddenVocabulary.DISPLAYS.
+# - `excerpt` is the VocabularyViolation window (single line, no pipes).
+# - `fatia` (F2-F9) points at the work-list slice of
+#   docs/AUDITORIA_UX_WRITING_2026-11.md that removes the line.
+# The gate fails on any violation missing here and on any stale entry:
+# the baseline only shrinks, never grows.
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [easyHeartRatePaceRef howToRun] | pace | … . Guie pelo esforço e pela FC: fique entre 140 e 155 bpm; o pace é referência (entre 6:00 e 6:30 por km). Mantenha o esforço … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [easyRpePaceRef howToRun] | pace | … 0 min prescritos. Use o esforço percebido 6/10 como guia; o pace é referência (entre 6:00 e 6:30 por km). Mantenha o esforço … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPace howToRun] | mesociclo / bloco | … forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (teto 172 bp … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPace howToRun] | pace | … treino forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (te … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | mesociclo / bloco | … forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a partir de … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [qualityPaceNoCeil howToRun] | pace | … treino forte no esforço prescrito durante os 40 min. Use o pace do bloco: fique entre 5:00 e 5:20 por km; a FC confirma (a … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/briefing/SessionBriefingEngine.kt [racePaceSteps step1] | pace | Faça 5 × 4 min no pace atual de 5K, com 2 min leves de recuperação. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [evidence EV-FOSTER-2001 title] | sRPE | Carga pelo esforço percebido (sRPE) | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [evidence EV-IMPELLIZZERI-2020 title] | ACWR | Limitações do ACWR | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-CAL-01 title] | LTHR | Prova ou teste recente define VDOT e LTHR | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-CAL-01 title] | VDOT | Prova ou teste recente define VDOT e LTHR | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-COLD-01 title] | qualidade | Rampa de entrada: prova recente libera 1 qualidade curta, sem progressão | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-03 title] | qualidade | Oportunidade de qualidade: o plano propõe e o dia confirma | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-04 title] | PEAK / BUILD / TAPER / BASE / RECOVERY | Catálogo de qualidade por fase, nível e distância, com PEAK específico | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PER-04 title] | qualidade | Catálogo de qualidade por fase, nível e distância, com PEAK específico | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-PLAN-01 title] | guardrails | Volume cresce no máximo 6% e só com semana concluída e guardrails verdes | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-RACE-03 title] | Riegel | Previsão de tempo por VDOT, com faixa e checagem de Riegel | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/ExplanationCatalog.kt [rule R-RACE-03 title] | VDOT | Previsão de tempo por VDOT, com faixa e checagem de Riegel | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [acwrHigh detail] | ACWR | ACWR 1,60 > 1,50 | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [acwrHigh unlockHint] | ACWR | Mantenha a carga estável até o ACWR voltar a 1,50 ou menos. | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [coldStart detail] | VDOT | rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [coldStart detail] | qualidade | rampa de entrada: prova recente com VDOT, 1 qualidade curta sem progressão | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [monotonyHigh detail] | monotonia / monótona | monotonia 2,10 ≥ 2,00 | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [monotonyUnknown detail] | monotonia / monótona | monotonia sem dados suficientes | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [raceWeek detail] | qualidade | semana de prova: sem qualidade principal | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/QualityGate.kt [strainSpike detail] | strain | strain semanal acima de 2× a média crônica | F3
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedFast note] | pace | … revisão atual (30:59), dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedSlow note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … (30:59), ainda dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [alignedSlow note] | pace | … o atual (30:59), ainda dentro da faixa: ela é referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [ambitious note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … da que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [ambitious note] | pace | … ais rápida que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [conservative note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … revisão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [conservative note] | pace | … que a previsão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [noGoal note] | PEAK / BUILD / TAPER / BASE / RECOVERY | Sem meta de tempo informada. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [noGoal note] | pace | Sem meta de tempo informada. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableLowConfidence note] | PEAK / BUILD / TAPER / BASE / RECOVERY | … previsão recente de 5K (calibração sem origem confiável): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableLowConfidence note] | pace | … ável): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableNoVdot note] | PEAK / BUILD / TAPER / BASE / RECOVERY | Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableNoVdot note] | VDOT | Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescre … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableNoVdot note] | pace | … rado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableStale note] | PEAK / BUILD / TAPER / BASE / RECOVERY | Sem previsão recente de 5K (calibração vencida): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/RacePace.kt [unavailableStale note] | pace | … cida): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Fartlek"] | pace | Variação por esforço percebido, sem pace fixo. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Intervalado"] | especificidade | Repetições curtas para a especificidade de 5K. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova 10K"] | pace | Blocos no pace atual da prova (10K), não na meta; a previsão manda. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova 5K"] | pace | Blocos no pace atual da prova (5K), não na meta; a previsão manda. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova maratona"] | pace | Blocos no pace atual da prova (maratona), não na meta; a previsão manda. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Pace de prova meia maratona"] | pace | Blocos no pace atual da prova (meia maratona), não na meta; a previsão man … | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/SessionLibrary.kt [template "Rodagem com estímulos"] | qualidade | … lados no fácil, após 4 semanas consistentes; não conta como qualidade. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/prescription/WorkoutRecommender.kt [subjectiveMissing rationale] | qualidade | … fácil e sem treino forte. Faça o check-in para confirmar a qualidade de hoje. Alvo 7:30–8:24/km · FC 146–161. | F4
+core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [nextQuality coachLine] | qualidade | Rodagem bem feita. Amanhã: qualidade de 40 min. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityOnTarget coachLine] | qualidade | Qualidade completa. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityOnTarget headline] | qualidade | Qualidade completa | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityTooEasy coachLine] | qualidade | Qualidade abaixo do alvo. | F5
+core/domain/src/main/kotlin/com/meucoach/core/domain/story/StoryVerdictCalculator.kt [qualityTooEasy headline] | qualidade | Qualidade abaixo do alvo | F5
+fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume defini … | F2
+fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume definido pela … | F2
+fixtures/golden/per-horizon/expected.json:conservative :: plan.rationale | qualidade | … a para ajustar. Entregue 115 min. 4 dias, 115 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-horizon/expected.json:conservative :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … revisão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
+fixtures/golden/per-horizon/expected.json:conservative :: session[WEDNESDAY].rationale | pace | … que a previsão atual (30:59): ela segue como referência. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
+fixtures/golden/per-horizon/expected.json:general :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Volume: base de 150 min concluídos na semana de 26/10; alv … | F2
+fixtures/golden/per-horizon/expected.json:general :: plan.rationale | qualidade | … com evidência). Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-horizon/expected.json:noRace :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Volume: base de 150 min concluídos na semana de 26/10; alv … | F2
+fixtures/golden/per-horizon/expected.json:noRace :: plan.rationale | qualidade | … com evidência). Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume defini … | F2
+fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Volume definido pela … | F2
+fixtures/golden/per-horizon/expected.json:peak :: plan.rationale | qualidade | … a para ajustar. Entregue 115 min. 4 dias, 115 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-horizon/expected.json:peak :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … da que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
+fixtures/golden/per-horizon/expected.json:peak :: session[WEDNESDAY].rationale | pace | … ais rápida que a previsão atual (30:59): ela é ambiciosa. O pace do PEAK usa a previsão atual de 5K (6:12/km), nunca a meta. | F2
+fixtures/golden/per-opportunity/expected.json:plan :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BASE. Volume: base de 120 min concluídos na semana de 26/10; alv … | F2
+fixtures/golden/per-opportunity/expected.json:plan :: plan.rationale | qualidade | … com evidência). Entregue 120 min. 3 dias, 120 min no total. Qualidade planejada para terça-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-quality/expected.json:beginner :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume defini … | F2
+fixtures/golden/per-quality/expected.json:beginner :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume definido pela … | F2
+fixtures/golden/per-quality/expected.json:build :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume defini … | F2
+fixtures/golden/per-quality/expected.json:build :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume definido pela … | F2
+fixtures/golden/per-quality/expected.json:build :: plan.rationale | qualidade | … a para ajustar. Entregue 150 min. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-quality/expected.json:peak :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Semana de pro … | F2
+fixtures/golden/per-quality/expected.json:peak :: plan.rationale | mesociclo / bloco | Fase PEAK. Bloco 1 de 2. Faltam 2 semanas para a prova. Semana de prova em 1 … | F2
+fixtures/golden/per-quality/expected.json:peak :: plan.rationale | qualidade | … ntado; o volume segue sua agenda. 4 dias, 150 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2
+fixtures/golden/per-quality/expected.json:peak :: plan.rationale | taper | … ana concluída com evidência para ajustar. Entregue 150 min. Taper sem histórico de volume: o corte percentual não é inventado … | F2
+fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | … mo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demo … | F2
+fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | VDOT | … in restantes em ritmo leve. Sem previsão recente de 5K (sem VDOT calibrado): o PEAK usa o esforço 8 de 10; o app não prescre … | F2
+fixtures/golden/per-quality/expected.json:peak :: session[WEDNESDAY].rationale | pace | … rado): o PEAK usa o esforço 8 de 10; o app não prescreve um pace não demonstrado. Recalibre com prova, teste de 30 min ou es … | F2
+fixtures/golden/plan-upgrade/expected.json:upgraded :: plan.rationale | qualidade | Semana base com oportunidade estrutural de qualidade na sexta; o dia confirma. | F2
+fixtures/golden/plan-upgrade/expected.json:upgraded :: session[MONDAY].title | Fácil | Fácil de segunda | F4
+fixtures/golden/plan-upgrade/expected.json:upgraded :: session[TUESDAY].title | Fácil | Fácil de terça | F4
+fixtures/golden/plan-upgrade/expected.json:upgraded :: session[WEDNESDAY].title | Fácil | Fácil de hoje | F4
+fixtures/golden/vol-02/expected.json:plan :: plan.rationale | PEAK / BUILD / TAPER / BASE / RECOVERY | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume: base … | F2
+fixtures/golden/vol-02/expected.json:plan :: plan.rationale | mesociclo / bloco | Fase BUILD. Bloco 1 de 3. Faltam 4 semanas para a prova. Volume: base de 142 … | F2
+fixtures/golden/vol-02/expected.json:plan :: plan.rationale | qualidade | … desão considera só o plano (3/3). 3 dias, 151 min no total. Qualidade planejada para quarta-feira; o dia confirma com prontidão e … | F2

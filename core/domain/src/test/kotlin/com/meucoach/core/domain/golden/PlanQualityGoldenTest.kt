@@ -114,6 +114,29 @@ class PlanQualityGoldenTest {
     }
 
     @Test
+    fun `forbidden vocabulary stays out of the catalog week`() {
+        val input = readGolden("/golden/per-quality/input.json")
+        val expected = readGolden("/golden/per-quality/expected.json")
+        val base = input.toWeeklyInput()
+
+        val build = WeeklyPlanGenerator().generate(base)
+        val peak = WeeklyPlanGenerator().generate(
+            base.copy(race = RacePlan("race-1", RaceDistance.FIVE_K, base.weekStart.plusDays(14))),
+        )
+        val beginner = WeeklyPlanGenerator().generate(
+            base.copy(
+                profile = input.getJSONObject("profile").toProfile().copy(experience = Experience.BEGINNER),
+            ),
+        )
+
+        assertGoldenVocabulary(
+            expected,
+            listOf("build" to build, "peak" to peak, "beginner" to beginner),
+            "fixtures/golden/per-quality/expected.json",
+        )
+    }
+
+    @Test
     fun `peak is race specific and differs from the frozen build`() {
         val input = readGolden("/golden/per-quality/input.json")
         val base = input.toWeeklyInput()

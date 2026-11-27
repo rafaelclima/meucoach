@@ -81,6 +81,27 @@ class PlanGoldenTest {
         assertThat(plan.sessions.map { it.title }).doesNotContainAnyElementsOf(forbidden)
     }
 
+    @Test
+    fun `forbidden vocabulary stays out of the generated plan`() {
+        val input = readGolden("/golden/per-opportunity/input.json")
+        val expected = readGolden("/golden/per-opportunity/expected.json")
+
+        val plan = WeeklyPlanGenerator().generate(
+            WeeklyPlanInput(
+                profile = input.getJSONObject("profile").toProfile(),
+                readiness = input.getJSONObject("readiness").toReadiness(),
+                weekStart = LocalDate.parse(input.getString("weekStart")),
+                today = LocalDate.parse(input.getString("today")),
+                race = input.optJSONObject("race")?.toRace(),
+                volumeReferences = input.optJSONArray("volumeReferences")?.let { references ->
+                    List(references.length()) { index -> references.getJSONObject(index).toVolumeReference() }
+                },
+            ),
+        )
+
+        assertGoldenVocabulary(expected, listOf("plan" to plan), "fixtures/golden/per-opportunity/expected.json")
+    }
+
     private fun JSONObject.toProfile(): AthleteProfile {
         val availabilityJson = getJSONObject("availability")
         val availability = availabilityJson.keys().asSequence().associate { key ->
