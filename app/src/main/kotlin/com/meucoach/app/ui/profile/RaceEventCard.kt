@@ -46,6 +46,7 @@ import com.meucoach.app.ui.common.raceTargetTimeLabel
 import com.meucoach.app.ui.common.targetTimeParts
 import com.meucoach.app.ui.common.targetTimeUnitFor
 import com.meucoach.app.ui.common.totalSeconds
+import com.meucoach.app.ui.today.CycleSummaryRow
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McDivider
@@ -82,6 +83,8 @@ internal fun RaceEventCard(
     prediction: RacePredictionResult?,
     message: String?,
     recovery: RaceRecoveryUi? = null,
+    cycleOverview: com.meucoach.core.domain.cycle.CycleOverview? = null,
+    onCycleClick: () -> Unit = {},
     onSave: (RaceDistance, LocalDate, Int?) -> Unit,
     onComplete: (String?) -> Unit,
     onCancel: () -> Unit,
@@ -137,6 +140,12 @@ internal fun RaceEventCard(
             raceTargetTimeLabel(planned.targetTimeSec)?.let { target ->
                 SummaryRow("Meta informada", target)
             }
+            cycleOverview
+                ?.takeIf { overview -> overview.race != null }
+                ?.let { overview ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CycleSummaryRow(overview = overview, onClick = onCycleClick)
+                }
             if (projection != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 RaceTargetProjectionBlock(projection = projection)

@@ -94,6 +94,10 @@ sem o nome canônico antes.
 | `Deload` | **Semana de descarga** | Volume −25% a cada 4ª semana de carga demonstrada; intensidade mantida. | idem |
 | `Mesociclo` | **Fase do treino** | Bloco de semanas em que a carga sobe, desce e se recupera. | idem |
 | `Bloco` (macro) | **Etapa** | Etapa da preparação para a prova. | idem |
+| `CycleOverview` | **Caminho até a prova** | Leitura das próximas 6 semanas ou até a prova, com fases, marcos e direção de volume. Não é um plano fechado. | Sheet no `Hoje`/`Perfil` |
+| Descarga futura | **Descarga a confirmar** | Cenário condicional: só cai depois de 3 semanas de carga concluídas; uma semana perdida empurra a data. | idem |
+| `PREVIEW` | **Prévia** | Semana seguinte persistida no domingo; pode mudar até segunda. | Hoje, revisão, caminho |
+| Intenção futura | **A confirmar** | Semana/distância/volume que ainda depende do que acontecer; sem minutos ou pace exatos. | Caminho até a prova |
 
 ---
 

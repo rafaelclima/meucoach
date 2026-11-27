@@ -19,6 +19,7 @@
 > Revisão 1.16 (26/11/2026, Fatia 2, ADR 0067 implementado): o longão do iniciante cresce no máximo +10 min/semana sobre o último longão normal real/planejado, com piso 45, teto do nível e agenda como limites; semanas especiais não são referência e a copy nomeia rampa, agenda, piso vencendo ou primeiro longão. Golden `G-LONG-RUN-RAMP-01`; `weekly-plan-v9`.
 > Revisão 1.17 (26/11/2026, Fatia 3, ADR 0068 implementado): a qualidade não cai na segunda seguinte a um longão treinável de domingo; com outro dia seguro ela é movida e a copy nomeia o longão anterior, sem dia seguro a semana tem zero `QUALITY` com copy. Semana anterior ausente ou longão encerrado como não treinável não bloqueiam. Golden `G-QUALITY-ADJACENCY-01`; `weekly-plan-v9`.
 > Revisão 1.18 (26/11/2026, Fatia 4, ADR 0069 implementado): o iniciante em taper/prova recebe no máximo 1 strides `EASY` ≤25 min com estrutura, `qualityKind = null` e `qualityCount` 0; a posição respeita a janela 7–10/10–14 (ou a semana da prova) e, sem dia seguro de 20–25 min, a sessão é omitida com copy. Nenhum `QUALITY`; `R-PRESC-04` preservada. Golden `G-BEGINNER-TAPER-01`; `weekly-plan-v9`.
+> Revisão 1.19 (27/11/2026, ADR 0072): a visão de ciclo é uma leitura somente leitura da tabela macro e do mesociclo; não altera fases, volume, taper ou descarga. Minutos/paces futuros não são projetados; a descarga futura aparece como cenário condicional ("se completar N semanas de carga") e a confirmação continua vindo do plano persistido (`R-PLAN-04`). Nenhuma regra fisiológica nova; `weekly-plan-v12`/`daily-prescription-v9`/`macro-plan-v2` inalterados.
 
 > Este documento é a fonte de verdade das regras de treinamento. Se o código divergir daqui, o código está errado — ou este documento precisa de uma nova versão com justificativa.
 
@@ -343,6 +344,12 @@ horizonte continua no modo geral (`BASE`/`BUILD`, com a oportunidade estrutural
 de qualidade) até a tabela específica começar; o golden `G-PER-06` congela o 5K
 a 26 semanas. Sem prova, o motor alterna `BASE`/`BUILD` em blocos de 4, sem
 `PEAK`/taper.
+
+A visão de ciclo (ADR 0072) expõe essa tabela como intenção, não como plano:
+6 semanas ou até a prova, com marcos e direção de volume. Ela não deriva
+minutos/paces futuros nem substitui a prescrição; a descarga futura só aparece
+como cenário condicional baseado nas semanas de carga já concluídas. A
+confirmação continua sendo o `R-PLAN-04` do plano persistido.
 
 ### 8.4 Sessões de qualidade
 

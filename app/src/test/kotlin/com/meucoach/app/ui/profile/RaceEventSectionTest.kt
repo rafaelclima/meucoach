@@ -12,7 +12,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.meucoach.app.ui.today.CycleOverviewFixtures
 import com.meucoach.core.designsystem.theme.McTheme
+import com.meucoach.core.domain.cycle.CycleOverview
 import com.meucoach.core.domain.race.RacePredictionResult
 import com.meucoach.core.domain.race.RaceTargetProjection
 import com.meucoach.core.domain.race.RaceTargetProjector
@@ -390,11 +392,39 @@ class RaceEventSectionTest {
         assertThat(undone).isEqualTo("race-1")
     }
 
+    @Test
+    fun `race card shows the cycle summary and opens the same sheet`() {
+        val event = plannedEvent()
+        compose.setContent {
+            McTheme(darkTheme = true) {
+                ProfileContent(
+                    state = state(
+                        events = listOf(event),
+                        cycleOverview = CycleOverviewFixtures.overview(RaceDistance.TEN_K),
+                    ),
+                    onEdit = {},
+                    onCalibrate = {},
+                    onOpenHealth = {},
+                    onManageData = {},
+                    onShowTutorial = {},
+                )
+            }
+        }
+
+        compose.onNodeWithTag("profile-list").performScrollToNode(hasTestTag("cycle-summary"))
+        compose.onNodeWithTag("cycle-summary").assertIsDisplayed()
+        compose.onNodeWithText("Prova em 5 semanas").assertIsDisplayed()
+        compose.onNodeWithTag("cycle-summary-open").performClick()
+        compose.onNodeWithTag("cycle-sheet").assertIsDisplayed()
+        compose.onNodeWithText("10 km · 10 de janeiro").assertExists()
+    }
+
     private fun state(
         events: List<RaceEvent>,
         projection: RaceTargetProjection? = null,
         prediction: RacePredictionResult? = null,
         athlete: AthleteProfile = profile(),
+        cycleOverview: CycleOverview? = null,
     ) = ProfileUiState(
         isLoading = false,
         profile = athlete,
@@ -402,6 +432,7 @@ class RaceEventSectionTest {
         raceEvents = events,
         raceProjection = projection,
         racePrediction = prediction,
+        cycleOverview = cycleOverview,
     )
 
     private fun calibratedProfile() = profile().copy(

@@ -3,6 +3,7 @@ package com.meucoach.app.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.meucoach.app.application.UndoRaceAutoCompletion
+import com.meucoach.app.application.VolumeReferenceProjection
 import com.meucoach.app.time.TimeProvider
 import com.meucoach.core.data.health.HealthConnectStatus
 import com.meucoach.core.data.health.HealthDailySource
@@ -13,7 +14,11 @@ import com.meucoach.core.data.repository.NewRaceEvent
 import com.meucoach.core.data.repository.ProfileRepository
 import com.meucoach.core.data.repository.RaceEventOutcome
 import com.meucoach.core.data.repository.RaceEventRepository
+import com.meucoach.core.data.repository.TrainingPlanRepository
+import com.meucoach.core.domain.cycle.CycleOverviewCalculator
+import com.meucoach.core.domain.cycle.CycleOverviewInput
 import com.meucoach.core.domain.prescription.CompletedRace
+import com.meucoach.core.domain.prescription.RacePlan
 import com.meucoach.core.domain.prescription.RecoveryWindow
 import com.meucoach.core.model.AthleteProfile
 import com.meucoach.core.model.RaceDistance
@@ -28,9 +33,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import javax.inject.Inject
 
 data class ProfileGateUiState(val isLoading: Boolean = true, val profile: AthleteProfile? = null)
@@ -83,11 +90,16 @@ data class ProfileUiState(
     val raceMessage: String? = null,
     /** Active post-race recovery window, when today is inside it (ADR 0037). */
     val raceRecovery: RaceRecoveryUi? = null,
+    /** Read-only race cycle projection (ADR 0072); null while loading or without a profile. */
+    val cycleOverview: com.meucoach.core.domain.cycle.CycleOverview? = null,
+    /** True when the projection failed unexpectedly; the race card stays authoritative. */
+    val cycleOverviewError: Boolean = false,
 )
 
 /** Recovery state of the completed race shown in the profile card. */
 data class RaceRecoveryUi(val eventId: String, val until: LocalDate)
 
+@Suppress("LongParameterList")
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val repository: ProfileRepository,
@@ -95,6 +107,7 @@ class ProfileViewModel @Inject constructor(
     private val healthSource: HealthDailySource,
     private val syncStore: HealthSyncStore,
     private val raceEventRepository: RaceEventRepository,
+    private val planRepository: TrainingPlanRepository,
     private val activities: ActivityRepository,
     private val undoRaceAutoCompletion: UndoRaceAutoCompletion,
     private val timeProvider: TimeProvider,
@@ -107,6 +120,9 @@ class ProfileViewModel @Inject constructor(
 
     private val access = MutableStateFlow(HealthAccess())
     private val raceMessage = MutableStateFlow<String?>(null)
+
+    /** Re-reads the persisted plans when the screen resumes or a replan is accepted. */
+    private val cycleRefresh = MutableStateFlow(0)
     private val raceInputs = combine(
         raceEventRepository.observeAll(),
         activities.observeActivitySummaries(),
@@ -117,7 +133,7 @@ class ProfileViewModel @Inject constructor(
         metricsRepository.observeAll(),
         access,
         timeProvider.today,
-        combine(raceInputs, raceMessage) { inputs, message -> inputs to message },
+        combine(raceInputs, raceMessage, cycleRefresh) { inputs, message, _ -> inputs to message },
     ) { profile, metrics, access, today, race ->
         val (events, summaries) = race.first
         val zone = profile?.timezone
@@ -144,6 +160,40 @@ class ProfileViewModel @Inject constructor(
                         subtitle = summary.startTime.atZone(zone).toLocalTime().toString(),
                     )
                 }
+        }
+        val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val currentPlan = planRepository.getWeek(currentWeekStart)
+        val nextWeekPlan = planRepository.getWeek(currentWeekStart.plusWeeks(1))
+        val recentWeeks = planRepository.getWeeks((1L..4L).map { currentWeekStart.minusWeeks(it) })
+        val cycleRace = planned?.let(RacePlan::from)
+            ?: RacePlan.from(profile?.goal)?.takeIf { events.isEmpty() }
+        val cycleReferences = if (profile == null || cycleRace == null) {
+            emptyList()
+        } else {
+            VolumeReferenceProjection.build(
+                plans = recentWeeks + listOfNotNull(currentPlan),
+                activities = summaries,
+                zoneId = zone,
+            ).references
+        }
+        val cycleResult = profile?.let { athlete ->
+            runCatching {
+                CycleOverviewCalculator.calculate(
+                    CycleOverviewInput(
+                        today = today,
+                        experience = athlete.experience,
+                        race = cycleRace,
+                        raceUpdatedOn = planned?.updatedAt?.atZone(zone)?.toLocalDate(),
+                        currentPlan = currentPlan,
+                        nextWeekPlan = nextWeekPlan,
+                        references = cycleReferences,
+                        recovery = RecoveryWindow.active(
+                            events.mapNotNull(CompletedRace::from),
+                            today,
+                        ),
+                    ),
+                )
+            }
         }
         ProfileUiState(
             isLoading = false,
@@ -176,6 +226,8 @@ class ProfileViewModel @Inject constructor(
                         until = it.race.raceDate.plusDays(it.totalDays.toLong()),
                     )
                 },
+            cycleOverview = cycleResult?.getOrNull(),
+            cycleOverviewError = cycleResult?.isFailure == true,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -252,6 +304,7 @@ class ProfileViewModel @Inject constructor(
 
     /** Re-reads the platform state when the screen resumes, after a sync or permission change. */
     fun refreshHealth() {
+        cycleRefresh.value += 1
         viewModelScope.launch {
             val status = healthSource.status()
             val hasPermissions = status == HealthConnectStatus.AVAILABLE &&

@@ -100,6 +100,10 @@ data class TodayUiState(
      * intent, not a confirmed prescription; null on every other day.
      */
     val nextWeekPlan: com.meucoach.core.domain.prescription.WeeklyPlan? = null,
+    /** Read-only race cycle projection (ADR 0072); null while loading or without a profile. */
+    val cycleOverview: com.meucoach.core.domain.cycle.CycleOverview? = null,
+    /** True when the projection failed unexpectedly; the plan card stays authoritative. */
+    val cycleOverviewError: Boolean = false,
     /** Single authority of the day; null only before a profile exists. */
     val prescription: com.meucoach.core.domain.prescription.DailyPrescription? = null,
     /**

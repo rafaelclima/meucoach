@@ -1,6 +1,6 @@
 # ROADMAP.md — MeuCoach
 
-**Versão:** 1.84 · **Data:** 27/11/2026 · **Mudança:** ADR 0070 — horário habitual, lembretes antes do treino, prévia da próxima semana, aviso de domingo, treino forte condicionado ao check-in e revisão com “próxima semana”. Nenhuma regra fisiológica nova.
+**Versão:** 1.85 · **Data:** 27/11/2026 · **Mudança:** ADR 0072 — visão de ciclo e prova: projeção somente leitura de 6 semanas ou até a prova, marcos de preparação/redução/prova, descarga confirmada/condicional e sheet no Hoje/Perfil. Nenhuma regra fisiológica nova; `weekly-plan-v12`/`daily-prescription-v9`/`macro-plan-v2` inalterados.
 
 > Sem prazo. O critério é qualidade e confiança, não velocidade. Cada fase termina com build verde, testes e documentação atualizada.
 
@@ -413,6 +413,21 @@ Fluxo completo com dados reais; 4 semanas de uso; ajuste de pesos e paces.
 - [x] Fatia 7 da documentação (26/11/2026): `PRODUCT.md` v1.3 com Coach/Story/Arte, `PRD_IA_COACH.md` com timeouts reais (decisão 8) e escopo médico fail-closed (decisão 21), `TESTING.md` com flakes/contagens e `DECISIONS.md`/`ARCHITECTURE.md` com a barra e as versões atuais. Nenhuma feature nova.
 
 **Aceite:** a IA só reescreve texto; qualquer falha cai no determinístico; memória é local, opcional, expira e nunca decide carga, pace ou plano.
+
+### P1-19 · Visão de ciclo e prova (gap 7)
+
+**Status:** concluído em 27/11/2026 ([ADR 0072](adr/0072-cycle-and-race-overview.md)); validação visual no aparelho pendente.
+
+- [x] `CycleOverviewCalculator` puro: 6 semanas ou até a prova, fase por semana, marcos de preparação/redução/prova e direção de volume.
+- [x] Descarga confirmada pelo `R-PLAN-04` do plano atual/prévia; futura apenas como cenário condicional com “se” e confiança baixa; sem histórico, sem data.
+- [x] Minutos/dias fortes só da semana atual e da prévia persistida; nenhuma sessão, pace ou duração futura inventada.
+- [x] `MacroPlan` aditivo (`preparationStart`/`horizonWeeks`) e `MesoPhaseLabels` compartilhado; sem bump de `macro-plan-v2`.
+- [x] Sheet “Caminho até a prova” no Hoje (card do plano) e no Perfil/Prova (card da prova), sem aba nova e sem duplicar a prévia.
+- [x] Aviso de prova alterada depois do plano; o plano da semana continua autoridade e o “Ajustar” existente resolve.
+- [x] Revisão semanal com intervalo de datas no bloco da próxima semana.
+- [x] Testes de domínio, ViewModel, UI, acessibilidade e goldens; gate de vocabulário do ciclo.
+
+**Aceite:** o usuário com prova em 6/8/12 semanas vê quando começa a redução, se há descarga no horizonte e como o volume se move; semanas futuras não contam como histórico nem viram segunda prescrição.
 
 ---
 

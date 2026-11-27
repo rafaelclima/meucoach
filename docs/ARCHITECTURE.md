@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — MeuCoach
 
-**Versão:** 1.15 · **Data:** 27/11/2026 · **Reconciliação:** vocabulário, voz e estados padronizados no texto de usuário (ADR 0071) — lista negra de jargão, mapa de enums → rótulos, três registros de voz e gate automatizado de conteúdo; docs-only, sem schema, migração ou motor: Room v23 e `weekly-plan-v9`/`daily-prescription-v7` inalterados. A reconciliação anterior (ADR 0070) — horário habitual de treino, lembretes antes do treino, prévia persistida da próxima semana e transparência de treino forte condicionado ao check-in — segue vigente.
+**Versão:** 1.16 · **Data:** 27/11/2026 · **Reconciliação:** visão de ciclo e prova (ADR 0072) — projeção somente leitura em `core:domain/cycle`, 6 semanas ou até a prova, descarga confirmada/condicional e sheet no Hoje/Perfil; sem schema, migração ou bump de motor (`weekly-plan-v12`/`daily-prescription-v9`/`macro-plan-v2` inalterados). A reconciliação anterior (ADR 0071) — vocabulário, voz e gate de conteúdo — e a do ADR 0070 — janela semanal, prévia de domingo e lembretes — seguem vigentes.
 
 ## 1. Restrições e forças
 
@@ -160,6 +160,7 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 | `ReadinessCalculator` | sono, HRV, RHR, check-in, carga | score, nível, confiança, contribuintes |
 | `WeeklyPlanGenerator` | perfil, disponibilidade, prontidão, carga, `today`, semanas anteriores, prova, janela de recuperação | semana conservadora (até 2 qualidades, longão, taper, deload, recuperação pós-prova) com volume +6% sobre o concluído; taper por média/fallback (D3), rampa do longão (D4), adjacência entre semanas (D5) e strides `EASY` do iniciante no taper (D6) |
 | `VolumeProgression` | semanas anteriores, teto de disponibilidade, prontidão/carga/ACWR | alvo de minutos, base e motivo de manutenção (ADR 0038) |
+| `CycleOverviewCalculator` | prova, `today`, experiência, plano atual, prévia, referências reais e recuperação | projeção somente leitura de 6 semanas ou até a prova, marcos, direção de volume e descarga confirmada/condicional (ADR 0072) |
 | `TaperBaselineResolver` | semanas elegíveis antes do taper, maior semana forte recente | baseline da média de 3 semanas, fallback nomeado ou `NO_HISTORY` (ADR 0066) |
 | `LongRunReferenceResolver` | semanas anteriores, nível e encerramentos | último longão normal real/planejado para limitar o iniciante a +10 min/semana (ADR 0067) |
 | `RecoveryWindow` | prova concluída (`distância`/`data`) e data consultada | janela ativa, teto de duração, bloqueio de qualidade/longão |
@@ -177,12 +178,14 @@ Hoje (um card) ──► CompleteSession ──► SessionExecution + completion
 
 **Aba Coach (read-only, Blocos A/B):** `CoachSignalsSource` observa check-ins, métricas, atividades, última importação e execuções em uma única emissão (`PersistedTrainingSignals`). `RoomCoachGuardsSource`, `RoomCoachProgressSource` e `RoomCoachReviewSource` compartilham essa leitura e observam perfil, semanas persistidas e provas; cada emissão monta F4 uma vez pelo `WeeklyReviewAssembler`. `RoomCoachPlanSource` observa `observeWeekRecord` (conteúdo + `inputsHash` + `version`, leitura transacional) para a explicação ser invalidada após replanejamento. Nenhuma fonte escreve prescrição, plano ou perfil, e a regra continua no motor determinístico.
 
+**Visão de ciclo (ADR 0072):** `CycleOverviewCalculator` é puro e roda na leitura. Ele resolve a fase de cada semana com `MacroPlanResolver.resolve(race, weekStart)`, copia minutos/dias fortes apenas do plano atual e da prévia persistida e usa `MesoCycle.resolve` somente para responder uma descarga condicional. Não gera `WeeklyPlan`, não cria `DailyPrescription`, não grava e não alimenta adesão/volume/mesociclo/carga. `MacroPlan` expõe `preparationStart`/`horizonWeeks` de forma aditiva. O `TodayViewModel` calcula no mesmo combine do plano e da prévia; o `ProfileViewModel` usa o mesmo calculator. A UI é um `ModalBottomSheet` aberto pelo `PlanWeekCard` e pelo `RaceEventCard`, sem aba nova.
+
 ### 6.2 Versionamento do motor
 
 - `engineVersion` semântica (ex.: `1.0.0`) e `inputsHash` determinístico por decisão.
 - A `DailyPrescription` persiste `engineVersion`, `inputsHash`, `ruleIds`/`evidenceIds` e confiança; a versão anterior permanece com `supersedesId`.
 - Mudou regra? Nova versão do motor e nova linha. Não há `rulesVersion`/`evidenceVersion` como colunas separadas.
-- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v9`, `daily-prescription-v7`, `macro-plan-v2`, `planning-v1` (fingerprint). A Fatia 7 é docs-only e **não** bumpa motor; as versões seguem as dos ADRs 0066–0069. O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o mecanismo de upgrade compara qualquer versão armazenada com o alvo (v8→v9 na abertura; v6→v7 na prescrição). O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
+- Esquema real das versões (ADR 0048 §2.4): `weekly-plan-v12`, `daily-prescription-v9`, `macro-plan-v2`, `planning-v1` (fingerprint). A visão de ciclo (ADR 0072) é somente leitura e **não** bumpa motor; as versões seguem as dos ADRs 0066–0069/0071. O `WeeklyPlan` persiste `engineVersion` (`weekly_plans.generatorVersion`, schema v18, C4-46); o mecanismo de upgrade compara qualquer versão armazenada com o alvo. O default da coluna continua `'weekly-plan-v6'` para o legado da migração; o motor grava a versão atual em toda linha nova.
 
 ### 6.3 Tempo, prescrição e evidência
 

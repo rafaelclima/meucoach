@@ -42,6 +42,14 @@ data class MacroPlan(
     val evidenceIds: List<String>,
     val confidence: DataConfidence,
     val inputsHash: String,
+    /**
+     * First Monday of the specific preparation table, or `null` when there is
+     * no race. With a race beyond the horizon it is in the future; the cycle
+     * overview uses it to say when the specific path starts.
+     */
+    val preparationStart: LocalDate? = null,
+    /** Length of the specific table (8, 12 or 16 weeks); `null` without a race. */
+    val horizonWeeks: Int? = null,
 )
 
 /**
@@ -66,13 +74,13 @@ object MacroPlanResolver {
         }
         val weeksToRaceWeek = ChronoUnit.WEEKS.between(weekStart, raceWeek).toInt()
         val horizon = horizonWeeks(race, weeksToRaceWeek)
+        val prepStart = raceWeek.minusWeeks((horizon - 1).toLong())
         if (weeksToRaceWeek >= horizon) {
-            return general(today)
+            return general(today, race, prepStart, horizon)
         }
         // A tabela é ancorada no início da preparação (semana da prova menos o
         // horizonte): a semana atual continua de onde parou, então todo bloco
         // é alcançável mesmo com horizonte parcial.
-        val prepStart = raceWeek.minusWeeks((horizon - 1).toLong())
         val table = buildTable(race, horizon)
         val count = weeksToRaceWeek + 1
         val intents = (0 until count).map { index ->
@@ -95,6 +103,8 @@ object MacroPlanResolver {
             evidenceIds = EVIDENCE_IDS,
             confidence = DataConfidence.MEDIUM,
             inputsHash = inputsHash(race, today),
+            preparationStart = prepStart,
+            horizonWeeks = horizon,
         )
     }
 
@@ -106,6 +116,13 @@ object MacroPlanResolver {
         confidence = DataConfidence.MEDIUM,
         inputsHash = inputsHash(race = null, today = today),
     )
+
+    private fun general(today: LocalDate, race: RacePlan, preparationStart: LocalDate, horizonWeeks: Int): MacroPlan =
+        general(today).copy(
+            inputsHash = inputsHash(race, today),
+            preparationStart = preparationStart,
+            horizonWeeks = horizonWeeks,
+        )
 
     private fun horizonWeeks(race: RacePlan, weeksToRaceWeek: Int): Int = when (race.distance) {
         // FR-411: a 5K far enough out gets a longer base block. A short entry

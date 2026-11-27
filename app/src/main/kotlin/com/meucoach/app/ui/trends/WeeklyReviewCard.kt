@@ -131,6 +131,14 @@ private fun NextWeekBlock(plan: WeeklyPlan?) {
         style = MaterialTheme.typography.titleSmall,
         color = colors.textPrimary,
     )
+    plan?.let {
+        Text(
+            text = WeeklyReviewFormat.weekRange(it.weekStart),
+            style = McTextStyles.caption,
+            color = colors.textTertiary,
+            modifier = Modifier.testTag("weekly-review-next-week-range"),
+        )
+    }
     Spacer(modifier = Modifier.height(6.dp))
     if (plan == null) {
         Text(

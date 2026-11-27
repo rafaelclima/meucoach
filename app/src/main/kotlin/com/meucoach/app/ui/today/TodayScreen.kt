@@ -126,6 +126,7 @@ fun TodayScreen(
     var changesOpen by remember { mutableStateOf(false) }
     var explanationSource by remember { mutableStateOf<ExplanationSource?>(null) }
     var briefingOpen by remember { mutableStateOf(false) }
+    var cycleOpen by remember { mutableStateOf(false) }
     val planExplanation = remember(state.plan) { state.plan?.let(::buildPlanExplanation) }
     val openExplanation: (ExplanationSource) -> Unit = { source ->
         val available = when (source) {
@@ -244,6 +245,8 @@ fun TodayScreen(
                     onExplain = { openExplanation(ExplanationSource.PLAN) },
                     onReplan = onReplanRequest,
                     onShowChanges = { changesOpen = true },
+                    cycleOverview = state.cycleOverview,
+                    onCycleClick = { cycleOpen = true },
                 )
             }
             if (replan.suggestion != null) {
@@ -367,6 +370,24 @@ fun TodayScreen(
                 ?.let { SessionBriefingSheetState.Ready(it) }
                 ?: SessionBriefingSheetState.Empty,
             onDismiss = { briefingOpen = false },
+        )
+    }
+    if (cycleOpen) {
+        val overview = state.cycleOverview
+        val sheetState = when {
+            state.cycleOverviewError -> CycleOverviewSheetState.Failed(
+                "Não foi possível calcular o caminho.",
+            )
+
+            overview?.race != null -> CycleOverviewSheetState.Ready(overview)
+
+            overview != null -> CycleOverviewSheetState.Empty(overview.recoveryUntil)
+
+            else -> CycleOverviewSheetState.Loading
+        }
+        CycleOverviewSheet(
+            state = sheetState,
+            onDismiss = { cycleOpen = false },
         )
     }
 }
@@ -1256,6 +1277,8 @@ private fun PlanWeekCard(
     onExplain: () -> Unit,
     onReplan: () -> Unit,
     onShowChanges: () -> Unit,
+    cycleOverview: com.meucoach.core.domain.cycle.CycleOverview? = null,
+    onCycleClick: () -> Unit = {},
 ) {
     val colors = McTheme.colors
     var skipTarget by remember { mutableStateOf<LocalDate?>(null) }
@@ -1300,6 +1323,10 @@ private fun PlanWeekCard(
                     )
                 }
             }
+        }
+        cycleOverview?.takeIf { overview -> overview.race != null }?.let { overview ->
+            Spacer(modifier = Modifier.height(6.dp))
+            CycleSummaryRow(overview = overview, onClick = onCycleClick)
         }
         planLowConfidenceNote(plan)?.let { note ->
             Spacer(modifier = Modifier.height(6.dp))

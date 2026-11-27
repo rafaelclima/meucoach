@@ -951,7 +951,7 @@ class WeeklyPlanGenerator {
         }
         val taperStridesOmitted = taperStridesWindowPresent && taperStridesDay == null
         val rationale = buildString {
-            append("Etapa: ${mesoPhaseLabel(meso.phase)}. ")
+            append("Etapa: ${MesoPhaseLabels.of(meso.phase)}. ")
             if (meso.fallbackUsed) {
                 append("Ainda não há histórico para posicionar esta semana; o app usa a sequência padrão. ")
             }
@@ -1731,18 +1731,6 @@ class WeeklyPlanGenerator {
         DayOfWeek.FRIDAY -> "sexta-feira"
         DayOfWeek.SATURDAY -> "sábado"
         DayOfWeek.SUNDAY -> "domingo"
-    }
-
-    /**
-     * ADR 0071 §2.2: the engine never interpolates [MesoPhase] into user text.
-     * Every phase goes through this explicit mapper to its canonical label.
-     */
-    private fun mesoPhaseLabel(phase: MesoPhase): String = when (phase) {
-        MesoPhase.BASE -> "Base"
-        MesoPhase.BUILD -> "Construção"
-        MesoPhase.PEAK -> "Pico"
-        MesoPhase.TAPER -> "Semana de prova"
-        MesoPhase.RECOVERY -> "Recuperação"
     }
 
     private data class LongRunCopy(val title: String, val rationale: String, val decision: PlanDecision?)

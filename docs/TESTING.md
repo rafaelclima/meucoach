@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.24 · **Data:** 27/11/2026 · Suíte completa após o ADR 0070 (janela de planejamento e lembretes): **3.265 testes** (1389 domain / 1590 app / 245 data / 41 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
+**Versão:** 1.25 · **Data:** 27/11/2026 · Suíte completa após o ADR 0072 (visão de ciclo e prova): **3.340 testes** (1433 domain / 1621 app / 245 data / 41 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1). A contagem anterior era 3.265 após o ADR 0070.
 
 ## 1. Princípios
 
@@ -448,6 +448,8 @@ Goldens de FR-011: `trends-weekly-review-{dark,light,narrow-dark}` capturam o ca
 
 Goldens de ADR 0070: `today-next-week-dark` cobre o card da prévia da próxima semana com o selo “Prévia” e o treino forte condicionado; `onboarding-routine-dark`, `profile-health-{dark,light}` e `trends-weekly-review-{dark,light,narrow-dark}` foram regravados com o horário habitual, a linha “Horário habitual” e o bloco “Próxima semana”.
 
+Goldens e testes do ADR 0072: `cycle-overview-{dark,light}`, `cycle-overview-narrow-200-dark`, `cycle-overview-no-race-dark` e `today-cycle-summary-dark`; `CycleOverviewCalculatorTest` (6 semanas, prova além do horizonte, prova no meio da semana, parcial, sem prova, descarga confirmada/condicional/sem histórico, taper/peak sem descarga, prova alterada, recuperação, determinismo), `FutureWeekIsolationTest` (prévia futura não muda volume/meso/taper), `CycleOverviewFormatTest`, `CycleOverviewSheetTest` (loading/empty/failed/ready e TalkBack) e `CycleOverviewTodayTest`/`RaceEventSectionTest` (entrada e sheet). O bloco “Próxima semana” da revisão ganhou o intervalo de datas; o golden de revisão foi regravado.
+
 Goldens de C3-07: **nenhum golden novo**. A recuperação só aparece quando existe prova `COMPLETED` com janela ativa e o estado de demo não tem janela; `TodayRecoveryTest` cobre a linha “Recuperação após a prova · dia N de M · até dd/mm” no card e o downgrade da prescrição.
 
 Gráficos síncronos (12/11/2026): `McLineChart`/`McBarChart` montam um `CartesianChartModel` com `LineCartesianLayerModel.build`/`ColumnCartesianLayerModel.build` e passam `model` ao `CartesianChartHost`. O Vico renderiza esse caminho de forma síncrona; o antigo `CartesianChartModelProducer` aplicava o modelo em outro dispatcher e o Roborazzi podia capturar eixos sem série (`health-charts-dark`, `health-recovery-dark`). O componente não expõe mais `mc-chart-loading`: `mc-chart-ready` está presente desde a primeira composição. `ChartRenderTest` compõe linha e barra com uma cor exclusiva e exige pixels dessa cor após `waitForIdle`, travando a regressão.
@@ -499,6 +501,7 @@ Testes que caem de forma intermitente sob paralelismo/carga e passam isolados; n
 | `ReplanViewModelTest` (“a suppressed suggestion stays hidden but the explicit request still works”) | `TimeoutCancellationException` na suíte cheia | Caso não tocado pelo ADR 0070; verde isolado e na reexecução completa (27/11/2026) | `./gradlew :app:testDebugUnitTest --tests "*ReplanViewModelTest"` |
 | `StoryStudioContentTest` (“describes the preview”) | `waitUntil` de 10 s esperando a prévia sair de `Loading` | Render de frames fora da main (`Dispatchers.Default`) sob carga; desde a Fatia 6 os estados `Loading`/`Empty`/`Error` têm testes próprios sem depender do renderer, mas o caso antigo continua sensível à carga. | `./gradlew :app:testDebugUnitTest --tests "*StoryStudioContentTest"` (ou a suíte com `--no-parallel`) |
 | `StoryStudioScreenshotTest` | Timeout/verify da captura quando roda junto da suíte lógica | Frames Robolectric pesados; inclui o golden `story-studio-video-narrow-200-dark` (360 dp/fonte 200%). O gate visual é explícito e roda isolado. | `./gradlew :app:verifyRoborazziDebug --tests "*StoryStudioScreenshotTest"` |
+| `ArtStudioContentTest` (“a saved png confirms the gallery path in a snackbar”) | `ComposeTimeoutException` de 10 s na suíte cheia | Render/export de Arte sob carga, não tocado pelo ADR 0072; verde isolado | `./gradlew :app:testDebugUnitTest --tests "*ArtStudioContentTest"` |
 
 - **18/11/2026 (apagar individual):** `TodayViewModelPersistTest`
   (“upgrades a stale stored week on opening”) falhou uma vez na suíte cheia por

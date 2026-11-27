@@ -21,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -41,6 +44,9 @@ import com.meucoach.app.ui.replan.ReplanMessageCard
 import com.meucoach.app.ui.replan.ReplanSuggestionCard
 import com.meucoach.app.ui.replan.ReplanUiState
 import com.meucoach.app.ui.replan.ReplanViewModel
+import com.meucoach.app.ui.today.CycleOverviewSheet
+import com.meucoach.app.ui.today.CycleOverviewSheetState
+import com.meucoach.app.ui.today.CycleSummaryRow
 import com.meucoach.core.designsystem.component.McCard
 import com.meucoach.core.designsystem.component.McCardVariant
 import com.meucoach.core.designsystem.component.McEmptyState
@@ -136,6 +142,7 @@ internal fun ProfileContent(
     modifier: Modifier = Modifier,
 ) {
     val colors = McTheme.colors
+    var cycleOpen by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -175,6 +182,8 @@ internal fun ProfileContent(
                 raceProjection = state.raceProjection,
                 racePrediction = state.racePrediction,
                 raceMessage = state.raceMessage,
+                cycleOverview = state.cycleOverview,
+                onCycleClick = { cycleOpen = true },
                 onEdit = onEdit,
                 onCalibrate = onCalibrate,
                 onOpenHealth = onOpenHealth,
@@ -196,6 +205,24 @@ internal fun ProfileContent(
                 onRaceConsumeMessage = onRaceConsumeMessage,
             )
         }
+        if (cycleOpen) {
+            val overview = state.cycleOverview
+            val sheetState = when {
+                state.cycleOverviewError -> CycleOverviewSheetState.Failed(
+                    "Não foi possível calcular o caminho.",
+                )
+
+                overview?.race != null -> CycleOverviewSheetState.Ready(overview)
+
+                overview != null -> CycleOverviewSheetState.Empty(overview.recoveryUntil)
+
+                else -> CycleOverviewSheetState.Loading
+            }
+            CycleOverviewSheet(
+                state = sheetState,
+                onDismiss = { cycleOpen = false },
+            )
+        }
     }
 }
 
@@ -213,6 +240,8 @@ private fun ProfileDetails(
     raceProjection: com.meucoach.core.domain.race.RaceTargetProjection?,
     racePrediction: com.meucoach.core.domain.race.RacePredictionResult?,
     raceMessage: String?,
+    cycleOverview: com.meucoach.core.domain.cycle.CycleOverview?,
+    onCycleClick: () -> Unit,
     onEdit: () -> Unit,
     onCalibrate: () -> Unit,
     onOpenHealth: () -> Unit,
@@ -359,6 +388,8 @@ private fun ProfileDetails(
                 prediction = racePrediction,
                 recovery = raceRecovery,
                 message = raceMessage,
+                cycleOverview = cycleOverview,
+                onCycleClick = onCycleClick,
                 onSave = onRaceSave,
                 onComplete = onRaceComplete,
                 onCancel = onRaceCancel,

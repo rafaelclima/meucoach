@@ -1,6 +1,6 @@
 # PRODUCT.md — MeuCoach
 
-**Versão:** 1.4 · **Data:** 27/11/2026 · **Status:** aprovado para a Fase 1; revisão 1.4 registra a janela de planejamento semanal (ADR 0070): horário habitual, lembretes antes do treino, prévia da próxima semana, treino forte condicionado ao check-in e revisão com “o que muda”.
+**Versão:** 1.5 · **Data:** 27/11/2026 · **Status:** aprovado para a Fase 1; revisão 1.5 registra a visão de ciclo e prova (ADR 0072): projeção somente leitura de 6 semanas, marcos de redução/prova, descarga confirmada ou condicional e entrada no Hoje/Perfil. A revisão 1.4 registra a janela de planejamento semanal (ADR 0070): horário habitual, lembretes antes do treino, prévia da próxima semana, treino forte condicionado ao check-in e revisão com “o que muda”.
 
 **Histórico de revisão**
 
@@ -11,6 +11,7 @@
 | 1.2 | 06/11/2026 | C1-01..C1-05 implementados; lixeira de 7 dias e conclusão com evidência refletidas no escopo; divergências do PRD reconciliadas. |
 | 1.3 | 26/11/2026 | Coach, Story e Arte no escopo entregue; barra Hoje · Corridas · Coach · Tendências · Saúde com Perfil via avatar/engrenagem; Tier C manual e GUIDED futuro; métricas de desenvolvimento separadas das não instrumentadas; importação concluída e exportação JSON explícita sem restauração no MVP (DOC-01..DOC-07, GEN-01/02/03, D10). |
 | 1.4 | 27/11/2026 | Janela de planejamento semanal (ADR 0070): horário habitual no perfil, check-in/treino lembrados antes do treino, prévia persistida da próxima semana com aviso no domingo, treino forte futuro condicionado ao check-in e bloco “próxima semana” na revisão. |
+| 1.5 | 27/11/2026 | Visão de ciclo e prova: projeção somente leitura de 6 semanas ou até a prova, marcos de preparação/redução/prova, descarga confirmada ou condicional, volume por direção e entrada no card do plano (Hoje) e no card da prova (Perfil); sem plano multi-semana persistido. |
 
 ## 1. Visão
 
@@ -67,11 +68,12 @@ A promessa central:
 - Motor de zonas (LTHR + pace), carga (TRIMP, rTSS, CTL/ATL/TSB, ACWR), prontidão e prescrição.
 - Check-in diário de 15 s (sono, fadiga, dor, stress), lembrado **antes do treino** quando o horário habitual está informado.
 - **Prévia da próxima semana:** na primeira abertura de domingo, o app persiste a semana seguinte como intenção e a mostra com o selo “Prévia — pode mudar até segunda”. O plano da semana seguinte já existe antes da segunda; o dia continua sendo a autoridade final.
+- **Visão de ciclo e prova:** o card do plano no Hoje (e o card da prova no Perfil) abre um sheet “Caminho até a prova” com a semana atual e as próximas 5 (ou até a prova), fases, marcos de preparação/redução/prova e descarga. É leitura: não cria plano, não prescreve sessão futura e não promete minutos/paces além da semana atual e da prévia de domingo. A descarga futura aparece como cenário condicional (“se você completar N semanas de carga”) ou confirmada pelo plano; sem histórico, fica só a regra, sem data.
 - Leitura de **Health Connect** (sono, RHR, HRV, SpO2) com diagnóstico de sincronização e atualização automática ao abrir o app. `ExerciseSession`/corridas do Health Connect ficam para o ciclo 2 (FR-007).
 - **Coach (IA):** aba central com explicação da semana, revisão da semana fechada, replanejamento com confirmação/diff/undo, input livre e conversa aberta. A IA só reescreve texto do motor; opt-in explícito, memória local com TTL, revogação apaga e qualquer falha/validação cai no determinístico. Números, carga, pace e plano nunca nascem da IA.
 - **Story e Arte:** Story Studio no detalhe da atividade, com vídeo 9:16 (mapa via tiles OSM; exige rede), capa/pôster e Arte PNG transparente ou com foto nos formatos 4:5, 1:1 e 9:16. A Arte funciona offline; Story e Arte são visuais e não alteram treino, carga ou prescrição.
 - Tela **Hoje** com prontidão, treino prescrito e "por quê", com um link direto para a recuperação; um único card de treino, com o plano semanal como contexto. Quando o treino do dia já foi concluído, o card vira um resumo com selo “Concluído” e esconde as ações. Treinos fortes futuros aparecem como “Condicionado ao check-in”; a primeira semana criada no meio da semana explica que começa hoje.
-- **Revisão semanal com próxima semana:** além do resumo da semana fechada, um bloco curto mostra volume, treinos fortes e longão da semana seguinte, sempre condicionado ao check-in.
+- **Revisão semanal com próxima semana:** além do resumo da semana fechada, um bloco curto mostra o intervalo, volume, treinos fortes e longão da semana seguinte, sempre condicionado ao check-in. O bloco continua sendo a semana seguinte à revisada; a prévia de domingo é uma superfície separada e não é duplicada.
 - **Briefing do treino** (“Como correr hoje”): foco, alvo, por que hoje, como correr e o que fazer se estiver difícil, sempre copiados da prescrição vigente. Sessão concluída não recebe briefing retrospectivo; o histórico mostra a execução registrada.
 - Conclusão com evidência: corrida vinculada ou “fiz sem registro” com duração e RPE; descanso/doença encerram o dia com motivo. **Execução guiada (`GUIDED`) é futuro**, não contrato do MVP: `CompleteSession` continua recusando esse caminho até decisão/ADR próprio.
 - Evento de prova (5K/10K/meia/maratona) com taper por data e dia de prova como autoridade única; a corrida importada compatível pode concluir a prova automaticamente, com origem auditável e correção, e a meta declarada gera apenas uma referência aritmética de pace/faixa/passagens (ADR 0030/0032).

@@ -1,6 +1,90 @@
 # PROGRESS.md — Diário de progresso
 
-**Atualizado:** 27/11/2026 (Ciclo 5, F6: UI do Coach sem nome interno e com saudação única, baseline da UI com 7 violações F7)
+**Atualizado:** 27/11/2026 (Gap 7: visão de ciclo e prova, ADR 0072, projeção somente leitura, 3.340 testes)
+
+## Sessão 2026-11-27 — Gap 7: visão de ciclo e prova (ADR 0072)
+
+**Objetivo:** dar ao usuário com prova em 6/8/12 semanas uma leitura honesta do
+caminho até a prova — fases, redução, descarga, volume e marcos — sem criar um
+plano multi-semana persistido, uma segunda prescrição ou números futuros
+inventados. Nenhuma regra fisiológica, `ruleId`, `evidenceId` ou schema mudou;
+`weekly-plan-v12`/`daily-prescription-v9`/`macro-plan-v2` permanecem.
+
+### Concluído
+
+- **Domínio (`CycleOverviewCalculator`, novo `core:domain/cycle`):** projeção
+  pura de 6 semanas ou até a prova, fase por semana via `MacroPlanResolver`,
+  marcos de preparação específica/redução/prova, direção de volume, limite de
+  treinos fortes e descarga. Minutos e dias fortes só vêm do plano atual e da
+  prévia persistida; semanas futuras nunca carregam sessão, pace ou duração.
+- **Descarga:** `CONFIRMED` quando `R-PLAN-04` está no plano atual/prévia;
+  futura apenas como `CONDITIONAL` (simulação local de `MesoCycle` com “se
+  completar N semanas de carga”), confiança `LOW` e sem data quando não há
+  histórico. A simulação não é persistida nem alimenta adesão/volume/meso/carga.
+- **`MacroPlan` aditivo:** `preparationStart` e `horizonWeeks` para o marco de
+  início da preparação específica; `inputsHash` e fases existentes intactos.
+- **Vocabulário:** `MesoPhaseLabels` centraliza os 5 rótulos canônicos e o
+  `WeeklyPlanGenerator` passa a usá-lo; texto idêntico, sem bump.
+- **App/Hoje:** `TodayUiState.cycleOverview`/`cycleOverviewError`; cálculo no
+  mesmo combine do plano e da prévia, sem escrita; aviso de prova alterada
+  depois do plano (fase da semana atual fica “a confirmar” e o “Ajustar”
+  existente resolve).
+- **Perfil/Prova:** `ProfileUiState.cycleOverview` com o mesmo calculator e o
+  mesmo sheet, sem duplicar dados.
+- **UI:** resumo no `PlanWeekCard` (“fase · prova em N semanas · Ver caminho”),
+  sheet “Caminho até a prova” com marcos, semana atual/prévia/futuras,
+  descarga confirmada/condicional, rodapé de intenção e TalkBack; layout em
+  coluna/`FlowRow` para 200%, sem hex solto e sem aba nova.
+- **Revisão semanal:** bloco “Próxima semana” ganhou o intervalo de datas; a
+  prévia de domingo continua sendo a única fonte da linha “Próxima” do caminho.
+- **Testes/goldens:** `CycleOverviewCalculatorTest` (17 casos), `CycleDeload`
+  coberto no calculator, `FutureWeekIsolationTest` (volume/meso/taper não mudam
+  com prévia futura), `MacroPreparationStartTest`, `CycleOverviewFormatTest`,
+  `CycleOverviewSheetTest` (loading/empty/failed/ready/TalkBack),
+  `CycleOverviewTodayTest`, `RaceEventSectionTest`, `TodayViewModelPersistTest`
+  (sem nova versão) e gate de vocabulário do ciclo. Goldens novos
+  `cycle-overview-{dark,light}`, `cycle-overview-narrow-200-dark`,
+  `cycle-overview-no-race-dark`, `today-cycle-summary-dark`; revisão e briefing
+  regravados.
+- **Correção de golden preexistente:** `today-briefing-{dark,light}` estavam
+  defasados em relação à copy da F4 (`Intensidade`, `ritmo`); regravados para o
+  texto canônico atual, sem mudança de código.
+
+### Gates
+
+- Suíte: **3.340 testes** (1433 domain / 1621 app / 245 data / 41 model), 0
+  falhas/erros/skip; `:app:testDebugUnitTest --rerun-tasks --no-parallel` verde
+  após um flake conhecido (`TodayViewModelPersistTest`, documentado).
+- `./gradlew check --no-parallel` verde (detekt, Kover, spotless, lint, parser
+  FIT 93,01%); `:core:domain:detekt`/`:app:detekt` verdes.
+- `./gradlew :app:verifyRoborazziDebug` verde (goldens do ciclo, revisão e
+  briefing); nenhum dado real no diff; sem dependência nova.
+
+### Decisões e observações
+
+- O plano atual continua autoridade; o ciclo é leitura. Não há fase/deload
+  persistidos: a fase é re-derivada da prova + semana, e a descarga confirmada
+  vem de `R-PLAN-04`.
+- “Semana de prova” continua sendo o rótulo canônico de `TAPER` (ADR 0071); a
+  direção de volume e o marco “Redução para a prova” evitam ler várias semanas
+  como se fossem a prova.
+- O Coach não ganhou resposta nova; se um dia citar o ciclo, deve usar o mesmo
+  `CycleOverview` como fato fechado.
+
+### Pendente
+
+- Validar no aparelho com o usuário 0: sheet em 360 dp/200%, rolagem, TalkBack,
+  prova a 6/8/12 semanas, descarga confirmada/condicional e prova alterada.
+- Avaliar um link “Ver caminho” na revisão de Tendências (hoje só o intervalo
+  de datas) e a citação do ciclo no Coach, ambos com o mesmo calculator.
+- P1-12 (4 semanas de uso real) e a validação dos goldens no CI continuam
+  critérios separados.
+
+### Próximo
+
+1. Validar o sheet no aparelho e ajustar apenas copy/layout se necessário.
+2. Retomar F7–F9 do ADR 0071 (UI restante e fechamento do gate).
+3. P1-12 após a validação.
 
 ## Sessão 2026-11-27 — Ciclo 5, F6: UI do Coach (voz e rótulos)
 

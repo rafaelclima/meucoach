@@ -8,6 +8,7 @@ import com.meucoach.core.domain.review.WeeklyReviewObservation
 import com.meucoach.core.domain.review.WeeklyReviewObservationKind
 import com.meucoach.core.domain.review.WeeklySleep
 import com.meucoach.core.domain.review.WeeklyVolume
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -22,6 +23,10 @@ internal object WeeklyReviewFormat {
 
     fun dateRange(review: WeeklyReview): String =
         "Semana de ${review.weekStart.format(DAY_FORMAT)} a ${review.weekEnd.format(DAY_FORMAT)}"
+
+    /** Interval of the week shown below the reviewed one, without changing its meaning. */
+    fun weekRange(weekStart: LocalDate): String =
+        "${weekStart.format(DAY_FORMAT)}–${weekStart.plusDays(6).format(DAY_FORMAT)}"
 
     fun adherenceHeadline(adherence: WeeklyAdherence): String =
         "${adherence.done} de ${adherence.planned} sessões concluídas"

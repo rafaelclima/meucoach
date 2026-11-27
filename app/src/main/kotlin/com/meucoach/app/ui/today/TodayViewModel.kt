@@ -40,6 +40,8 @@ import com.meucoach.core.data.repository.RaceEventRepository
 import com.meucoach.core.data.repository.SessionExecutionRepository
 import com.meucoach.core.data.repository.TrainingPlanRepository
 import com.meucoach.core.domain.briefing.SessionBriefingEngine
+import com.meucoach.core.domain.cycle.CycleOverviewCalculator
+import com.meucoach.core.domain.cycle.CycleOverviewInput
 import com.meucoach.core.domain.load.LoadSnapshot
 import com.meucoach.core.domain.prescription.CompletedRace
 import com.meucoach.core.domain.prescription.DailyPrescription
@@ -115,6 +117,9 @@ private data class ResolvedDay(
     val nextWeekPlan: WeeklyPlan? = null,
     val nextWeekIsStored: Boolean = false,
     val events: List<RaceEvent>,
+    val recentWeeks: List<WeeklyPlan>,
+    /** Local date of the last edit of the planned race, when there is one. */
+    val raceUpdatedOn: LocalDate?,
     val recovery: RecoveryWindow?,
     val dataGate: HealthSyncGate,
 )
@@ -231,20 +236,21 @@ class TodayViewModel @Inject constructor(
             // open gate keeps the day without a plan (the UI shows it syncing);
             // a failed gate generates with the available data and says so.
             val gateSettled = gate is HealthSyncGate.Ready || gate is HealthSyncGate.Failed
+            val plannedRaceEvent = events
+                .filter { event -> event.status == RaceStatus.PLANNED }
+                .maxByOrNull { event -> event.updatedAt }
+            val zone = context.profile?.timezone
+                ?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() }
+                ?: timeProvider.zoneId.value
             val planned = plan ?: if (historyReady && gateSettled) {
                 context.profile?.let {
                     val eventDates = events.map { event -> event.targetDate }.toSet()
-                    val raceEvent = events
-                        .filter { event -> event.status == RaceStatus.PLANNED }
-                        .maxByOrNull { event -> event.updatedAt }
-                    val race = raceEvent?.let(RacePlan::from)
-                    val raceTargetTimeSec = if (raceEvent != null) {
-                        raceEvent.targetTimeSec
+                    val race = plannedRaceEvent?.let(RacePlan::from)
+                    val raceTargetTimeSec = if (plannedRaceEvent != null) {
+                        plannedRaceEvent.targetTimeSec
                     } else {
                         it.goal?.targetTimeSec
                     }
-                    val zone = runCatching { java.time.ZoneId.of(it.timezone) }
-                        .getOrNull() ?: timeProvider.zoneId.value
                     val volumeReferences = VolumeReferenceProjection.build(
                         plans = history.recentWeeks + listOfNotNull(history.previousWeek),
                         activities = context.activities,
@@ -314,6 +320,8 @@ class TodayViewModel @Inject constructor(
                 nextWeekPlan = storedNextPreview ?: generatedNextPreview,
                 nextWeekIsStored = storedNextPreview != null,
                 events = events,
+                recentWeeks = history.recentWeeks,
+                raceUpdatedOn = plannedRaceEvent?.updatedAt?.atZone(zone)?.toLocalDate(),
                 recovery = recovery,
                 dataGate = gate,
             )
@@ -359,6 +367,43 @@ class TodayViewModel @Inject constructor(
             }
             val effectivePlan = upgraded ?: plan
             retitleLegacySessionsIfNeeded(effectivePlan)
+            val zone = context.profile?.timezone
+                ?.let { runCatching { java.time.ZoneId.of(it) }.getOrNull() }
+                ?: timeProvider.zoneId.value
+            val cycleRace = resolved.events
+                .filter { it.status == RaceStatus.PLANNED }
+                .maxByOrNull { it.updatedAt }
+                ?.let(RacePlan::from)
+                ?: RacePlan.from(context.profile?.goal)?.takeIf { resolved.events.isEmpty() }
+            val cycleReferences = if (cycleRace == null) {
+                emptyList()
+            } else {
+                context.profile?.let {
+                    VolumeReferenceProjection.build(
+                        plans = resolved.recentWeeks + listOfNotNull(effectivePlan),
+                        activities = context.activities,
+                        zoneId = zone,
+                    ).references
+                }.orEmpty()
+            }
+            val cycleResult = context.profile?.let { profile ->
+                runCatching {
+                    CycleOverviewCalculator.calculate(
+                        CycleOverviewInput(
+                            today = context.today,
+                            experience = profile.experience,
+                            race = cycleRace,
+                            raceUpdatedOn = resolved.raceUpdatedOn,
+                            currentPlan = effectivePlan,
+                            nextWeekPlan = resolved.nextWeekPlan,
+                            references = cycleReferences,
+                            recovery = resolved.recovery,
+                        ),
+                    )
+                }
+            }
+            val cycleOverview = cycleResult?.getOrNull()
+            val cycleOverviewError = cycleResult?.isFailure == true
             val readiness = readinessResult(context.checkIn, context.metrics, context.today)
             // Competition wins and prevents any prescription calculation/persist
             // for the race day; the resolver owns the single branch.
@@ -431,6 +476,8 @@ class TodayViewModel @Inject constructor(
                 weekPrescriptions = weekPrescriptions,
                 qualityRestored = qualityRestored,
                 nextWeekPlan = resolved.nextWeekPlan,
+                cycleOverview = cycleOverview,
+                cycleOverviewError = cycleOverviewError,
             )
         }
 

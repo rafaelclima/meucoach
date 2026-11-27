@@ -24,6 +24,7 @@ class WeeklyReviewFormatTest {
         val review = review()
 
         assertThat(WeeklyReviewFormat.dateRange(review)).isEqualTo("Semana de 19/10 a 25/10")
+        assertThat(WeeklyReviewFormat.weekRange(review.weekStart)).isEqualTo("19/10–25/10")
     }
 
     @Test

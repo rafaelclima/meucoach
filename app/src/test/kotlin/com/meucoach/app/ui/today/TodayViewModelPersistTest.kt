@@ -805,6 +805,48 @@ class TodayViewModelPersistTest {
     }
 
     @Test
+    fun `cycle overview reads the current plan without writing a new version`(): Unit = runBlocking {
+        val timeProvider = FakeTimeProvider(
+            instant = Instant.parse("2026-11-02T12:00:00Z"),
+            zone = ZoneId.of("America/Sao_Paulo"),
+        )
+        val today = timeProvider.currentDate()
+        val week = weekWith(today, today).copy(
+            sessions = listOf(
+                com.meucoach.core.domain.prescription.PlannedSession(
+                    date = today,
+                    type = com.meucoach.core.domain.prescription.WorkoutType.EASY,
+                    title = "Rodagem",
+                    durationMin = 40,
+                    rationale = "Base.",
+                    ruleIds = listOf("R-ZONE-01"),
+                    evidenceIds = listOf("EV-SEILER-2010"),
+                ),
+            ),
+        )
+        profiles.saveProfile(profile(today))
+        checkIns.save(
+            DailyCheckIn(today, sleepQuality = 4, fatigue = 2, soreness = 1, stress = 2),
+        )
+        plans.saveWeek(week)
+        raceEvents.create(NewRaceEvent(RaceDistance.FIVE_K, today.plusWeeks(4)))
+        val before = plans.getWeekRecord(today)
+
+        val viewModel = createViewModel(timeProvider)
+        val state = withTimeout(10_000) {
+            viewModel.uiState.first { it.cycleOverview != null }
+        }
+
+        assertThat(state.cycleOverview?.race?.weeksToRace).isEqualTo(4)
+        assertThat(state.cycleOverview?.weeks?.first()?.isCurrent).isTrue()
+        assertThat(state.cycleOverview?.weeks?.first()?.plannedMinutes).isEqualTo(40)
+        val after = plans.getWeekRecord(today)
+        assertThat(after?.version).isEqualTo(before?.version)
+        assertThat(after?.plan?.weeklyMinutes).isEqualTo(before?.plan?.weeklyMinutes)
+        assertThat(after?.revisedAt).isNull()
+    }
+
+    @Test
     fun `blocks swapping into a race date across a week boundary`(): Unit = runBlocking {
         // Regression: on Sunday `tomorrow` lands in the next week, outside the
         // firstDate week range the race lookup used to cover. Fixed dates keep

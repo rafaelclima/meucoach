@@ -29,10 +29,19 @@ import com.meucoach.app.ui.profile.sexLabel
 import com.meucoach.app.ui.profile.targetDateLabel
 import com.meucoach.app.ui.profile.targetTimeLabel
 import com.meucoach.app.ui.review.WeeklyReviewFormat
+import com.meucoach.app.ui.today.CycleOverviewFormat
 import com.meucoach.core.designsystem.theme.McTheme
 import com.meucoach.core.domain.coach.CoachNextSubject
 import com.meucoach.core.domain.coach.CoachProgressSummary
+import com.meucoach.core.domain.cycle.CycleDeload
+import com.meucoach.core.domain.cycle.CycleMilestone
+import com.meucoach.core.domain.cycle.CycleMilestoneKind
+import com.meucoach.core.domain.cycle.CycleStrongIntent
+import com.meucoach.core.domain.cycle.CycleVolumeIntent
+import com.meucoach.core.domain.cycle.CycleWeek
+import com.meucoach.core.domain.cycle.CycleWeekState
 import com.meucoach.core.domain.prescription.DailyPrescription
+import com.meucoach.core.domain.prescription.MesoPhase
 import com.meucoach.core.domain.prescription.PlannedSession
 import com.meucoach.core.domain.prescription.PrescriptionAdjustment
 import com.meucoach.core.domain.prescription.PrescriptionTargets
@@ -607,6 +616,89 @@ class ContentVocabularyUiTest {
         weeklyAvailability = WeeklyAvailability(emptyMap()),
     )
 
+    @Test
+    fun `cycle overview labels stay clean`() {
+        val week = CycleWeek(
+            weekStart = TODAY.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+            phase = MesoPhase.BASE,
+            state = CycleWeekState.CURRENT,
+            isCurrent = true,
+            isNext = false,
+            volume = CycleVolumeIntent.BUILD,
+            strong = CycleStrongIntent.UP_TO_ONE,
+            strongDays = listOf(TODAY),
+        )
+        val texts = buildList {
+            MesoPhase.entries.forEach {
+                add(CheckedText("$CYCLE_OVERVIEW_FORMAT [phase $it]", CycleOverviewFormat.phase(it)))
+            }
+            CycleVolumeIntent.entries.forEach {
+                add(CheckedText("$CYCLE_OVERVIEW_FORMAT [volume $it]", CycleOverviewFormat.volume(it)))
+            }
+            CycleStrongIntent.entries.forEach {
+                add(
+                    CheckedText(
+                        "$CYCLE_OVERVIEW_FORMAT [strong $it]",
+                        CycleOverviewFormat.strong(week.copy(strong = it, strongDays = emptyList())),
+                    ),
+                )
+            }
+            CycleDeload.entries.forEach {
+                add(
+                    CheckedText(
+                        "$CYCLE_OVERVIEW_FORMAT [deload $it]",
+                        CycleOverviewFormat.deload(it) ?: "Sem descarga",
+                    ),
+                )
+            }
+            listOf(
+                CycleWeekState.CURRENT to (true to false),
+                CycleWeekState.NEXT to (false to true),
+                CycleWeekState.FUTURE to (false to false),
+                CycleWeekState.RACE to (false to false),
+            ).forEach { (state, flags) ->
+                add(
+                    CheckedText(
+                        "$CYCLE_OVERVIEW_FORMAT [state $state]",
+                        CycleOverviewFormat.weekState(
+                            week.copy(
+                                state = state,
+                                isCurrent = flags.first,
+                                isNext = flags.second,
+                                isPreview = flags.second,
+                                strongDays = if (state == CycleWeekState.FUTURE) emptyList() else week.strongDays,
+                            ),
+                        ),
+                    ),
+                )
+            }
+            CycleMilestoneKind.entries.forEach { kind ->
+                add(
+                    CheckedText(
+                        "$CYCLE_OVERVIEW_FORMAT [milestone $kind]",
+                        CycleOverviewFormat.milestone(CycleMilestone(kind, week.weekStart)),
+                    ),
+                )
+            }
+            add(CheckedText("$CYCLE_OVERVIEW_FORMAT [condition 1]", CycleOverviewFormat.deloadCondition(1)))
+            add(CheckedText("$CYCLE_OVERVIEW_FORMAT [condition 3]", CycleOverviewFormat.deloadCondition(3)))
+            add(CheckedText("$CYCLE_OVERVIEW_FORMAT [range]", CycleOverviewFormat.weekRange(week.weekStart)))
+            add(
+                CheckedText(
+                    "$CYCLE_OVERVIEW_FORMAT [description]",
+                    CycleOverviewFormat.weekDescription(week.weekStart),
+                ),
+            )
+            add(
+                CheckedText(
+                    "$CYCLE_OVERVIEW_FORMAT [a11y]",
+                    CycleOverviewFormat.weekAccessibility(week),
+                ),
+            )
+        }
+        UiVocabularyGate.assertClean(texts, CYCLE_OVERVIEW_FORMAT)
+    }
+
     private fun datedProfile() = profile().copy(
         goal = TrainingGoal(
             type = GoalType.FIVE_K,
@@ -679,6 +771,7 @@ class ContentVocabularyUiTest {
         const val COACH_NEXT_LABELS = "app/src/main/kotlin/com/meucoach/app/ui/coach/CoachNextLabels.kt"
         const val RACE_PREDICTION_BLOCK = "app/src/main/kotlin/com/meucoach/app/ui/common/RacePredictionBlock.kt"
         const val WEEKLY_REVIEW_FORMAT = "app/src/main/kotlin/com/meucoach/app/ui/review/WeeklyReviewFormat.kt"
+        const val CYCLE_OVERVIEW_FORMAT = "app/src/main/kotlin/com/meucoach/app/ui/today/CycleOverviewFormat.kt"
         const val COACH_FALLBACK_LABELS = "app/src/main/kotlin/com/meucoach/app/ui/coach/CoachFallbackLabels.kt"
         const val COACH_OPENING_LABELS = "app/src/main/kotlin/com/meucoach/app/ui/coach/CoachOpeningLabels.kt"
         const val COACH_DONE_LABELS = "app/src/main/kotlin/com/meucoach/app/ui/coach/CoachDoneLabels.kt"
