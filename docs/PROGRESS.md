@@ -32,16 +32,20 @@ schema, migração, dependência ou dado de saúde real no código/testes.
 - **Detalhe:** métricas empilhadas; trechos viram blocos “#N · distância” com
   Ritmo/Tempo/FC em linhas separadas; o comparativo planejado × executado empilha
   título/valor; layout normal intacto.
+- **Hoje:** em 200%, o card de prontidão empilha medidor e sinais; “Variabilidade” e
+  “FC de repouso” deixam de ser truncados e o selo de confiança não disputa a linha
+  do título.
 - **Testes/goldens:** `ActivitiesScreenTest`, `ActivitiesScreenshotTest`,
   `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`,
-  `ActivityComparisonScreenshotTest` e `BottomBarScreenshotTest`; novos goldens
-  `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`,
-  `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark`
-  e `bottom-bar-narrow-200-dark`.
+  `ActivityComparisonScreenshotTest`, `TodayPlanTest`, `TodayScreenshotTest` e
+  `BottomBarScreenshotTest`; novos goldens `activities-narrow-200-dark`,
+  `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`,
+  `activity-comparison-narrow-200-dark`, `today-narrow-200-dark` e
+  `bottom-bar-narrow-200-dark`.
 
 ### Gates
 
-- Suíte completa: **3.245 testes** (1387 domain / 1574 app / 244 data / 40 model),
+- Suíte completa: **3.247 testes** (1387 domain / 1576 app / 244 data / 40 model),
   0 falhas/erros/skip.
 - `./gradlew check -x spotlessMiscCheck :app:assembleDebug` verde (detekt, lint, Kover,
   parser FIT 93,01%).

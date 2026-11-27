@@ -1,6 +1,6 @@
 # TESTING.md — MeuCoach
 
-**Versão:** 1.23 · **Data:** 26/11/2026 · Suíte completa após D3–D6, Fatias 1–7 e correção de 200% no aparelho: **3.245 testes** (1387 domain / 1574 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
+**Versão:** 1.23 · **Data:** 26/11/2026 · Suíte completa após D3–D6, Fatias 1–7 e correção de 200% no aparelho: **3.247 testes** (1387 domain / 1576 app / 244 data / 40 model), 0 falhas, 0 erros, 0 skip; flakes conhecidos documentados (§10.1).
 
 ## 1. Princípios
 
@@ -94,7 +94,7 @@ O parser FIT deve ser testado contra um **vetor de bytes conhecido** e contra os
 
 Evidência atual (26/11/2026, após D3–D6, Fatias 1–7 e correção de 200%):
 
-- **3.245 testes** no repositório (1387 em `core:domain`, 1574 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
+- **3.247 testes** no repositório (1387 em `core:domain`, 1576 em `:app`, 244 em `core:data`, 40 em `core:model`), 0 falhas, 0 erros e 0 `@Ignore`/`@Disabled`.
 - Comando executado: `./gradlew :core:model:test :core:domain:test :core:data:testDebugUnitTest :app:testDebugUnitTest --rerun-tasks --no-parallel` (3m39s, verde). O `--no-parallel` evita os flakes de carga do §10.1; a suíte do app também foi validada sem ele em sessões anteriores.
 - 4 FIT + 3 TCX reais sanitizados; 2 GPX sintéticos.
 - `parser.fit`: 93,01% de branches (572/615).
@@ -410,9 +410,9 @@ artificiais.
 
 Ferramentas: Compose UI Test, Robolectric (JVM), Roborazzi (screenshot), AndroidX Test (instrumentado). Sem Espresso puro; Compose-first.
 
-**Regressão de fonte 200% (26/11/2026):** a validação no S24 Ultra encontrou cortes na barra inferior, na lista de corridas e no detalhe da atividade. A correção usa layouts empilhados quando `fontScale >= 1.5` e a barra com labels de até 2 linhas/altura mínima de 68 dp. Cobertura: `ActivitiesScreenTest`, `ActivitiesScreenshotTest`, `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`, `ActivityComparisonScreenshotTest` e `BottomBarScreenshotTest`; goldens `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark` e `bottom-bar-narrow-200-dark`.
+**Regressão de fonte 200% (26/11/2026):** a validação no S24 Ultra encontrou cortes na barra inferior, na lista de corridas, no detalhe da atividade e no card de prontidão do Hoje. A correção usa layouts empilhados quando `fontScale >= 1.5` e a barra com labels de até 2 linhas/altura mínima de 68 dp. Cobertura: `ActivitiesScreenTest`, `ActivitiesScreenshotTest`, `ActivityDetailScreenTest`, `ActivityDetailScreenshotTest`, `ActivityComparisonScreenshotTest`, `TodayPlanTest`, `TodayScreenshotTest` e `BottomBarScreenshotTest`; goldens `activities-narrow-200-dark`, `activity-detail-narrow-200-dark`, `activity-detail-splits-narrow-200-dark`, `activity-comparison-narrow-200-dark`, `today-narrow-200-dark` e `bottom-bar-narrow-200-dark`.
 
-Screenshots atuais (110 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
+Screenshots atuais (111 goldens em `app/src/test/screenshots/`, Roborazzi + Robolectric Native Graphics):
 
 | Grupo | Arquivos |
 |---|---|
@@ -426,7 +426,7 @@ Screenshots atuais (110 goldens em `app/src/test/screenshots/`, Roborazzi + Robo
 | Onboarding | `onboarding-dark`, `onboarding-light`, `onboarding-goal-dark`, `onboarding-routine-dark` |
 | Perfil | `profile-dark`, `profile-light`, `profile-health-dark`, `profile-health-light`, `profile-race-dark`, `profile-race-light` |
 | Story | `story-frame-dark`, `story-frame-logo-dark`, `story-final-dark`, `story-map-dark`, `story-final-map-dark`, `story-card-verdict-dark`, `story-final-verdict-dark`, `story-avatar-dark` |
-| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
+| Hoje | `today-dark`, `today-light`, `today-narrow-dark`, `today-narrow-200-dark`, `today-checklist-dark`, `today-plan-dark`, `today-plan-light`, `today-briefing-dark`, `today-briefing-light`, `today-race-dark`, `today-race-light`, `today-race-narrow-dark` |
 | Replanejamento | `replan-dark`, `replan-light` |
 | Tendências | `trends-dark`, `trends-light`, `trends-charts-dark`, `trends-volume-dark`, `trends-efficiency-dark`, `trends-readiness-dark` |
 | Revisão semanal | `trends-weekly-review-dark`, `trends-weekly-review-light`, `trends-weekly-review-narrow-dark` |
