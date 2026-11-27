@@ -35,7 +35,7 @@ class TodayExplanationLoadTest {
             load = subjectiveLoad(),
         )
 
-        assertThat(explanation.usedData).contains("Carga das últimas semanas", "Esforço percebido (RPE)")
+        assertThat(explanation.usedData).contains("Carga das últimas semanas", "Esforço percebido (1 a 10)")
         assertThat(explanation.missingData)
             .contains("FC ou ritmo para medir a carga objetivamente")
         val rule = explanation.rules.first { it.id == "R-LOAD-04" }
@@ -52,7 +52,7 @@ class TodayExplanationLoadTest {
             load = subjectiveLoad(subjectiveDays = 0),
         )
 
-        assertThat(explanation.usedData).doesNotContain("Esforço percebido (RPE)")
+        assertThat(explanation.usedData).doesNotContain("Esforço percebido (1 a 10)")
         assertThat(explanation.missingData)
             .doesNotContain("FC ou ritmo para medir a carga objetivamente")
     }

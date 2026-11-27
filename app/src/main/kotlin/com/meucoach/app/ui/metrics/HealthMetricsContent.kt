@@ -95,10 +95,14 @@ private fun HealthMetricsEmptyCard() {
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Conecte o Health Connect ou importe um CSV abaixo. Assim que houver sono, " +
-                "FC de repouso, variabilidade cardíaca (HRV) ou oxigenação (SpO₂), os gráficos " +
-                "aparecem aqui e passam a explicar sua " +
-                "prontidão.",
+            text = "Conecte o Health Connect ou importe um CSV abaixo.",
+            style = McTextStyles.caption,
+            color = colors.textSecondary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Assim que houver sono, FC de repouso, variabilidade cardíaca (HRV) ou oxigenação " +
+                "(SpO₂), os gráficos aparecem aqui. Eles passam a explicar sua prontidão.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
         )

@@ -105,7 +105,7 @@ class RaceEventSectionTest {
         compose.onNodeWithText("Meta × previsão").assertIsDisplayed()
         compose.onNodeWithText("mais rápida · ambiciosa", substring = true).assertIsDisplayed()
         compose.onNodeWithTag("race-prediction-gap-note").assertIsDisplayed()
-        compose.onNodeWithText("O pace do plano usa a previsão, não a meta.").assertIsDisplayed()
+        compose.onNodeWithText("O ritmo do plano usa a previsão, não a meta.").assertIsDisplayed()
     }
 
     @Test

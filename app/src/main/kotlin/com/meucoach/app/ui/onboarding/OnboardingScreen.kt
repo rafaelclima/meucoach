@@ -367,7 +367,7 @@ private fun aboutStep(
     )
     Text(
         text = "A base inicial é a mesma para iniciante e intermediário. " +
-            "O nível muda os estímulos a partir da fase BUILD.",
+            "O nível muda os estímulos a partir da fase de construção.",
         style = MaterialTheme.typography.bodyMedium,
         color = McTheme.colors.textSecondary,
     )

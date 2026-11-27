@@ -50,6 +50,13 @@ class LevelGraduationCardTest {
         compose.onNodeWithTag("level-graduation-why-toggle").performClick()
 
         compose.onNodeWithTag("level-graduation-why").assertIsDisplayed()
+        compose.onNodeWithTag("level-graduation-sources-toggle").assertIsDisplayed()
+        compose.onNodeWithText("R-LVL-01", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Ver fontes e detalhes técnicos", substring = false).assertIsDisplayed()
+
+        compose.onNodeWithTag("level-graduation-sources-toggle").performClick()
+
+        compose.onNodeWithTag("level-graduation-sources").assertIsDisplayed()
         compose.onNodeWithText("R-LVL-01", substring = true).assertIsDisplayed()
         compose.onNodeWithText("R-LVL-02", substring = true).assertDoesNotExist()
     }

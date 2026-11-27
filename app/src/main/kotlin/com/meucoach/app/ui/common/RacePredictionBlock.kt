@@ -114,7 +114,7 @@ private fun PredictionContent(prediction: RacePrediction, goalSec: Int?) {
             )
         }
         Text(
-            text = "O pace do plano usa a previsão, não a meta.",
+            text = "O ritmo do plano usa a previsão, não a meta.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
             modifier = Modifier.testTag("race-prediction-gap-note"),
@@ -133,7 +133,7 @@ private fun PredictionContent(prediction: RacePrediction, goalSec: Int?) {
     )
     if (prediction.usedRiegel) {
         Text(
-            text = "A faixa também considera a checagem de Riegel.",
+            text = "A faixa também considera a sua forma recente, não só a meta.",
             style = McTextStyles.caption,
             color = colors.textTertiary,
         )
@@ -160,7 +160,7 @@ private fun goalGapLabel(gap: GoalGap): String {
         GoalAlignment.CONSERVATIVE -> "meta $percent% mais lenta"
 
         GoalAlignment.ALIGNED -> when {
-            gap.percent == 0 -> "meta alinhada"
+            gap.percent == 0 -> "meta dentro da sua previsão atual"
             gap.percent < 0 -> "meta $percent% mais rápida · alinhada"
             else -> "meta $percent% mais lenta · alinhada"
         }
@@ -170,7 +170,7 @@ private fun goalGapLabel(gap: GoalGap): String {
 private fun sourceLabel(confidence: DataConfidence): String = when (confidence) {
     DataConfidence.HIGH -> "Baseada na sua prova ou teste recente."
     DataConfidence.MEDIUM -> "Estimativa pelos seus treinos; confirme com um teste de 30 min."
-    DataConfidence.LOW -> "Sem origem de calibração confiável."
+    DataConfidence.LOW -> "Sem calibração recente."
 }
 
 private fun unavailableLabel(reason: RacePredictionUnavailable): String = when (reason) {

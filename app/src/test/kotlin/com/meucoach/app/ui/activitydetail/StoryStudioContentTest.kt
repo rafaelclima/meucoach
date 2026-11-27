@@ -262,7 +262,7 @@ class StoryStudioContentTest {
     fun `explains the terrain download and the route-only preview`() {
         setContent(recipe = StoryRecipe(mapStyle = StoryMapStyle.TERRAIN))
 
-        compose.onNodeWithText("Relevo do terreno via Mapzen · é baixado na primeira vez.")
+        compose.onNodeWithText("Relevo do terreno: é baixado na primeira vez.")
             .performScrollTo()
             .assertIsDisplayed()
         compose.onNodeWithText("A prévia desenha a rota; o mapa escolhido entra no vídeo.")

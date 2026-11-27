@@ -61,7 +61,7 @@ class DailyMetricsCsvParser {
                     source = DailyMetricsSource.CSV,
                 )
             }.getOrElse {
-                errors += CsvRowError(lineNumber, it.message ?: "Valores inválidos.")
+                errors += CsvRowError(lineNumber, "Valores inválidos.")
                 return@forEachIndexed
             }
             if (byDate.put(date, metrics) != null) duplicates++

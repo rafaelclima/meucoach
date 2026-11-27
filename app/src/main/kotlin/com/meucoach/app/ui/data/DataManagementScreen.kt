@@ -146,7 +146,7 @@ internal fun DataManagementContent(
                         Text(
                             text = "Um arquivo JSON com perfil, corridas, check-ins, métricas diárias, planos " +
                                 "e o histórico do Coach. As amostras aparecem só como contagem; " +
-                                "o blob comprimido não sai do app.",
+                                "os dados brutos de cada corrida não saem do app.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -215,9 +215,13 @@ internal fun DataManagementContent(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Remove deste aparelho o perfil, as corridas, os check-ins, as métricas diárias, " +
-                                "os planos e o histórico do Coach, além de caches e arquivos internos do app. " +
-                                "O Health Connect não é alterado. O app volta para a configuração inicial " +
-                                "e não dá para desfazer.",
+                                "os planos e o histórico do Coach. O app volta ao início e não dá para desfazer.",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "O Health Connect não é alterado.",
                             style = McTextStyles.caption,
                             color = colors.textSecondary,
                         )
@@ -257,7 +261,7 @@ internal fun DataManagementContent(
                 }
                 item {
                     Text(
-                        text = "Sem nuvem, sem conta e sem analytics. " +
+                        text = "Sem nuvem, sem conta e sem rastreamento de uso. " +
                             "O backup só existe depois que você escolhe onde salvar.",
                         style = McTextStyles.caption,
                         color = colors.textTertiary,
@@ -354,7 +358,11 @@ private fun TrashCard(item: TrashItemUi, onRestore: () -> Unit, onDelete: () -> 
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = if (item.daysRemaining > 0) {
-                "Expira em ${item.daysRemaining} dia(s)."
+                if (item.daysRemaining == 1) {
+                    "Expira em 1 dia."
+                } else {
+                    "Expira em ${item.daysRemaining} dias."
+                }
             } else {
                 "Expira hoje; será removida no próximo expurgo."
             },

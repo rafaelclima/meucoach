@@ -41,7 +41,7 @@ class WeeklyReviewFormatTest {
         assertThat(WeeklyReviewFormat.adherenceHeadline(adherence)).isEqualTo("2 de 4 sessões concluídas")
         assertThat(WeeklyReviewFormat.adherencePercent(adherence)).isEqualTo("50%")
         assertThat(WeeklyReviewFormat.adherenceDetail(adherence))
-            .isEqualTo("1 com evidência · 1 sem registro · 2 puladas")
+            .isEqualTo("1 confirmadas por corrida · 1 sem registro · 2 puladas")
     }
 
     @Test
@@ -146,7 +146,7 @@ class WeeklyReviewFormatTest {
         )
 
         assertThat(WeeklyReviewFormat.adherenceDetail(adherence))
-            .isEqualTo("1 com evidência · 1 não verificada · 1 pulada")
+            .isEqualTo("1 confirmadas por corrida · 1 não verificada · 1 pulada")
         assertThat(WeeklyReviewFormat.sleepHint(WeeklySleep(measuredNights = 6, averageMinutes = 451, shortNights = 1)))
             .isEqualTo("6 noites · 1 curta")
 
@@ -177,7 +177,7 @@ class WeeklyReviewFormatTest {
                 WeeklyQuality(planned = 1, kept = 1, downgraded = 0, firstDowngradeDetail = null),
             ),
         )
-            .isEqualTo("Qualidade: 1 planejada, 1 mantida")
+            .isEqualTo("Treino forte: 1 planejado, 1 mantida")
     }
 
     @Test
@@ -186,7 +186,7 @@ class WeeklyReviewFormatTest {
             WeeklyReviewFormat.qualityLine(
                 WeeklyQuality(planned = 1, kept = 0, downgraded = 1, firstDowngradeDetail = "check-in de hoje ausente"),
             ),
-        ).isEqualTo("Qualidade: 1 planejada, 1 rebaixada (check-in de hoje ausente)")
+        ).isEqualTo("Treino forte: 1 planejado, 1 ajustado para fácil (check-in de hoje ausente)")
     }
 
     @Test
@@ -195,7 +195,7 @@ class WeeklyReviewFormatTest {
             WeeklyReviewFormat.qualityLine(
                 WeeklyQuality(planned = 2, kept = 1, downgraded = 1, firstDowngradeDetail = "ACWR 1,62 > 1,50"),
             ),
-        ).isEqualTo("Qualidade: 2 planejadas, 1 mantida, 1 rebaixada (ACWR 1,62 > 1,50)")
+        ).isEqualTo("Treino forte: 2 planejados, 1 mantida, 1 ajustado para fácil (ACWR 1,62 > 1,50)")
     }
 
     @Test

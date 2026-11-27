@@ -145,6 +145,7 @@ fun LevelGraduationCard(
     val suggestion = state.suggestion ?: return
     val colors = McTheme.colors
     var showWhy by rememberSaveable { mutableStateOf(false) }
+    var showSources by rememberSaveable { mutableStateOf(false) }
     McCard(modifier = modifier.testTag("level-graduation-card")) {
         Text(
             text = "PRONTO PARA SUBIR DE NÍVEL?",
@@ -202,7 +203,7 @@ fun LevelGraduationCard(
                 suggestion.ruleIds.forEach { ruleId ->
                     val rule = ExplanationCatalog.rule(ruleId)
                     Text(
-                        text = "${rule.id} · ${rule.title}",
+                        text = rule.title,
                         style = McTextStyles.caption,
                         color = colors.textSecondary,
                     )
@@ -211,11 +212,41 @@ fun LevelGraduationCard(
                     val evidence = ExplanationCatalog.evidence(evidenceId)
                     val label = evidence.source.ifBlank { evidence.title }.ifBlank { evidence.id }
                     Text(
-                        text = "${evidence.id} · $label",
+                        text = label,
                         style = McTextStyles.caption,
                         color = colors.textTertiary,
                     )
                 }
+            }
+            McTextButton(
+                text = if (showSources) "Ocultar fontes e detalhes técnicos" else "Ver fontes e detalhes técnicos",
+                onClick = { showSources = !showSources },
+                trailingArrow = false,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .testTag("level-graduation-sources-toggle"),
+            )
+            if (showSources) {
+                Column(modifier = Modifier.testTag("level-graduation-sources")) {
+                    suggestion.ruleIds.forEach { ruleId ->
+                        val rule = ExplanationCatalog.rule(ruleId)
+                        Text(
+                            text = "${rule.id} · ${rule.title}",
+                            style = McTextStyles.caption,
+                            color = colors.textSecondary,
+                        )
+                    }
+                    suggestion.evidenceIds.forEach { evidenceId ->
+                        val evidence = ExplanationCatalog.evidence(evidenceId)
+                        val label = evidence.source.ifBlank { evidence.title }.ifBlank { evidence.id }
+                        Text(
+                            text = "${evidence.id} · $label",
+                            style = McTextStyles.caption,
+                            color = colors.textTertiary,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
             }
             Spacer(modifier = Modifier.height(6.dp))
         }

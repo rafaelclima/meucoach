@@ -28,7 +28,7 @@ class ProfileLabelsTest {
 
     @Test
     fun `formats weekly availability`() {
-        assertThat(availabilityLabel(profile())).isEqualTo("seg, qua, sáb · 3 h/semana")
+        assertThat(availabilityLabel(profile())).isEqualTo("seg, qua, sáb · 3 h por semana")
     }
 
     @Test

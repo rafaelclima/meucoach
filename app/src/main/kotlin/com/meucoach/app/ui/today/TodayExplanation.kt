@@ -21,6 +21,7 @@ import com.meucoach.core.model.DailyCheckIn
 import com.meucoach.core.model.DataConfidence
 import com.meucoach.core.model.HeatLevel
 import com.meucoach.core.model.ReadinessLevel
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 data class ExplanationRuleUi(val id: String, val title: String)
@@ -93,7 +94,7 @@ private fun usedData(
     if (load?.dataState == LoadDataState.KNOWN) {
         add("Carga das últimas semanas")
         if (load.subjectiveDaysInWindow > 0 && load.objectiveDataState != LoadDataState.KNOWN) {
-            add("Esforço percebido (RPE)")
+            add("Esforço percebido (1 a 10)")
         }
     }
     if (prescription.targets.pace != null) add("Ritmo no limite calibrado")
@@ -224,12 +225,12 @@ internal fun planLowConfidenceNote(plan: WeeklyPlan): String? {
 private fun planConfidenceNote(confidence: DataConfidence): String = when (confidence) {
     DataConfidence.LOW ->
         "A confiança é calculada quando a semana é montada. Com dados parciais, o plano segue " +
-            "conservador e não libera progressão. Ela só é reavaliada quando chegam dados novos; " +
+            "conservador e não libera progressão.\n\nEla só é reavaliada quando chegam dados novos; " +
             "o restante entra no plano da próxima."
 
     DataConfidence.MEDIUM ->
         "A confiança é calculada quando a semana é montada e fica no máximo média: a semana é uma " +
-            "estimativa conservadora. Ela só é reavaliada quando chegam dados novos; o restante " +
+            "estimativa conservadora.\n\nEla só é reavaliada quando chegam dados novos; o restante " +
             "entra no plano da próxima."
 
     DataConfidence.HIGH ->
@@ -297,9 +298,7 @@ private fun readinessRationale(result: ReadinessResult, inputs: ReadinessInputs,
         checkIn?.let { add("check-in ${it.hooperSum}/20") }
     }
     if (drivers.isEmpty()) {
-        return "Ainda não há dados de recuperação. A prontidão fica em ${result.score} " +
-            "($level) com confiança $confidence até você registrar sono, variabilidade, " +
-            "FC de repouso ou um check-in."
+        return "Ainda não há dados de recuperação, então a prontidão não foi medida."
     }
 
     val base = "Sua prontidão está $level (${result.score}/100), com confiança $confidence: " +
@@ -334,8 +333,8 @@ private fun hrvLabel(hrv: HrvMetrics): String {
 private fun restingHeartRateLabel(metrics: RestingHeartRateMetrics): String {
     val delta = (metrics.average7dBpm - metrics.baseline30dBpm).roundToInt()
     return when {
-        delta >= 7 -> "FC de repouso +$delta bpm acima da média"
-        delta <= -3 -> "FC de repouso $delta bpm abaixo da média"
+        delta >= 7 -> "FC de repouso $delta bpm acima da sua média"
+        delta <= -3 -> "FC de repouso ${abs(delta)} bpm abaixo da sua média"
         else -> "FC de repouso estável"
     }
 }

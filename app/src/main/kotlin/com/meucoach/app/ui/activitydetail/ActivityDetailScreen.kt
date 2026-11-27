@@ -738,7 +738,7 @@ private fun StoryCard(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = "Vídeo 9:16 com a rota colorida pela FC, um card por km e um encerramento com distância, " +
-                "ritmo médio e tempo total. O mapa baixa tiles do OpenStreetMap via OpenFreeMap; " +
+                "ritmo médio e tempo total. O mapa é baixado de uma fonte pública de mapas; " +
                 "nenhuma coordenada exata é enviada.",
             style = McTextStyles.caption,
             color = colors.textSecondary,
